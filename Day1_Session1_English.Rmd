@@ -1,0 +1,1330 @@
+---
+title: 'Day 1, Session 1: Introduction to R'
+author: "Dusica Filipovic Durdevic"
+date: "2026-09-14"
+output:
+  revealjs::revealjs_presentation:
+    theme: simple
+    highlight: pygments
+    transition: none
+    center: false
+    css: custom.css
+    slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## What is R?
+
+- Programming language for statistical analyses
+
+- Open software
+
+  - Developed as a "step back" in alphabet in relation ot S
+    - ...o p R S t u...
+  - Developed during the 1990-s
+
+
+## Advantages of R
+
+- Huge community
+  - Abundant available help: official documentation, books, tutorials, scripts, forums...
+  
+> Fun fact
+
+> Vibecoding introduced a new dimension to R scripting (but did not eliminate expert knowledge)
+  
+- Constant improvement of algorithms
+  - A large number of people work on creating new packages (thousands of packages)
+  
+- Fast implementation of new advances in statistics
+  - Free - no waiting for a new version; packages are available as soon as someone writes the code and uploads it to CRAN
+
+
+## R and Packages
+
+![](Paketi.png){width=70%}
+
+
+## Packages
+
+- After installing R, additional installation of the desired packages is needed
+
+- Necessary for carrying out specific analyses/transformations
+  - Packages must be loaded before analyses
+
+- A set of functions that someone has programmed for the purpose of carrying out specific analyses/transformations
+  - Making your life easier
+
+
+
+## How to use R
+
+- Like Python, Java, etc.
+
+- No compiling needed (as is needed in C, C++, etc.)
+
+- Type a command + Enter = executed command
+
+
+## Where do we type the commands (i.e. the code)
+
+- In the R console
+  - Where they are also executed - we run the R we installed
+  
+- In a text editor
+  - We type, then copy into the console
+  
+- In supporting software
+  - Separate script editor and console: we type in the editor, execution takes place in the console
+  - R Studio
+  
+- We do not type commands anywhere
+  - We "click" - R Commander
+    - Not a typical use
+    
+- Typical use: R Studio
+  - Saving the code for future use and reproducibility!
+
+
+## R and R studio
+
+![](R_Rstudio.png){width=70%}
+
+## R studio options
+
+- Plenty!!! 
+
+- Illustrative examples
+  - R script
+    - File - New File - R Script 
+    - Code writing in plain text
+    
+  - R Markdown
+    - File - New File - R Markdown 
+    - Code writing with multiple additional options (e.g. making this presentation)
+
+
+## Introductory notes
+
+- Whatever starts with *#* in the code will not be executed
+  - Treated as a comment
+    - Convenient for notes
+    
+- Group of lines can be hashtagged by selecting and pressing *Ctrl+Shft+C*
+
+- Mind the capitalization!
+  - *Test* does not equal *test*
+
+
+## R is an interpreter
+
+- No compiling of the code
+  - R interprets what is typed and shows a result
+
+- In R console:
+    - Command + *Enter* = Executed command
+
+- In R Studio scripter:
+    - Command + *Ctrl + Enter*
+    
+- In R studio Rmd
+  - Command nested in chunks + click the green arrow
+    
+
+ - Let's try:
+ 
+```{r, warning = FALSE, message = FALSE}
+
+"Hello, world!"
+
+```
+
+> Fun facts
+
+> [1] indicates that the printed outcome is a vector and that it starts with the first element of the vector (in this case also the only one)
+
+> Soon we will learn that this vector contains data of the type *character* (take notice of the quotation marks)
+
+
+## What can R do? What type of commands can we type?
+
+- Working with concrete numbers
+  - R as a calculator
+
+- Working with variables
+  - Assigning values to abstract entities
+  
+- Working with objects
+  - vectors, lists, matrices, dataframes
+
+- Working with files
+  - reading, writing
+  
+
+## Working with concrete values: R as a calculator
+
+## Operators
+
+- Arithmetic operators
+
+- Logical operators
+
+
+
+## Arithmetic operators (AKA basic calculus)
+
+
+- Addition
+
+```{r, warning = FALSE, message = FALSE}
+2+3 
+```
+
+
+- Subtracting
+
+```{r, warning = FALSE, message = FALSE}
+6-4 
+```
+
+
+- Multiplication
+
+```{r, warning = FALSE, message = FALSE}
+3*8
+```
+
+
+- Division
+
+```{r, warning = FALSE, message = FALSE}
+8/2
+```
+
+
+- Power
+
+```{r, warning = FALSE, message = FALSE}
+2^3
+```
+
+
+- Square root
+
+```{r, warning = FALSE, message = FALSE}
+sqrt(9)
+```
+
+
+- Absolute value
+
+```{r, warning = FALSE, message = FALSE}
+abs(-9)
+```
+
+
+- Logarithm
+
+```{r, warning = FALSE, message = FALSE}
+log(9)
+```
+
+
+- Exponent
+
+```{r, warning = FALSE, message = FALSE}
+exp(9)
+```
+
+
+- And many others...
+
+
+
+
+## Logical operators
+
+- Is true
+  - N.B. Always in capital letters
+  
+```{r, warning = FALSE, message = FALSE}
+TRUE
+```
+
+- Is false
+  - N.B. Always in capital letters
+  
+```{r, warning = FALSE, message = FALSE}
+FALSE 
+```
+
+- Is less than
+
+```{r, warning = FALSE, message = FALSE}
+1<2 
+```
+
+- Is less or equal
+
+```{r, warning = FALSE, message = FALSE}
+1<=2 
+```
+
+- Is greater than
+
+```{r, warning = FALSE, message = FALSE}
+2>1 
+```
+
+- Is greater or equal
+
+```{r, warning = FALSE, message = FALSE}
+2>=2 
+```
+
+- Is equal to
+  - N.B. == is not the same as =
+  
+```{r, warning = FALSE, message = FALSE}
+2==2 
+```
+
+- Is not equal to
+
+```{r, warning = FALSE, message = FALSE}
+2!=3 
+```
+
+- Is not
+
+```{r, warning = FALSE, message = FALSE}
+!TRUE
+```
+
+- Logical OR
+
+```{r, warning = FALSE, message = FALSE}
+1|2 
+TRUE | FALSE
+TRUE | TRUE
+FALSE | FALSE
+```
+
+- Logical AND
+
+```{r, warning = FALSE, message = FALSE}
+1 & 2 
+TRUE & FALSE
+TRUE & TRUE
+FALSE & FALSE
+```
+
+- Is it true
+
+```{r, warning = FALSE, message = FALSE}
+isTRUE(TRUE) 
+isTRUE(FALSE)
+```
+
+
+## Working with variables (not only concrete values)
+
+## R can assign values to variables
+
+- x is assigned value of 1, but it does not show yet
+```{r, warning = FALSE, message = FALSE}
+x <- 1  
+```
+
+> Instead of <- you can use =, but some find it not to be "posh"
+
+- To inspect the value of x
+
+```{r, warning = FALSE, message = FALSE}
+x 
+```
+
+- Similarly
+ 
+```{r, warning = FALSE, message = FALSE}
+y <- 2 + 3
+y
+```
+
+- We can apply different operations with variables
+
+```{r, warning = FALSE, message = FALSE}
+x+y
+```
+
+- And assign the result of that operation to a new variable
+
+```{r, warning = FALSE, message = FALSE}
+z <- x+y 
+z 
+```
+
+> Values assigned to variables are kept in the workspace, to be approached when needed
+
+- To inspect the content of the workspace
+
+```{r, warning = FALSE, message = FALSE}
+ls()
+```
+
+- But pay attention!
+ - Try a+b here:
+ 
+```{r, warning = FALSE, message = FALSE}
+a <- "2"
+b <- "3"
+paste(a,b)
+```
+
+> To know which operation to apply, you must know the data type!
+
+
+## Data types
+
+- character 
+  - "a", "Hello, world!", "I love coding!"
+
+- numeric 
+  - 2, 2.5
+
+- integer 
+  - 2, 3
+
+- logical 
+  - Boolean; TRUE, FALSE, NA
+
+
+> Fun fact
+
+> There other data types: double, complex, etc.
+
+
+## To inspect the type of the data
+
+- What is the data type?
+
+```{r, warning = FALSE, message = FALSE}
+class("a")
+```
+
+```{r, warning = FALSE, message = FALSE}
+class(2.5)
+```
+
+```{r, warning = FALSE, message = FALSE}
+class(2L) 
+```
+
+> Add L if you want to be sure that something is of integer type
+
+```{r, warning = FALSE, message = FALSE}
+class(TRUE)
+```
+
+> Fun fact:
+
+> class() is typically used, as it reflects how R treats the objects in practice; typeof() would be more accurate; however, typeof() indicates lower-level storage type, e.g. numeric can be double, float, complex...
+
+> Caution:
+
+> Sometmes the difference between class() and typeof() will be of practial importance, e.g. character vs. factor. Factor is character treated as integer internally by R (important for analyses, dummy coding, ordering of levels).
+
+
+- Is this data of the given type?
+
+```{r, warning = FALSE, message = FALSE}
+is.character("a")
+```
+
+```{r, warning = FALSE, message = FALSE}
+is.numeric(2.5)
+```
+
+```{r, warning = FALSE, message = FALSE}
+is.integer(2L)
+```
+
+```{r, warning = FALSE, message = FALSE}
+is.integer(2.5)
+```
+
+> Fun fact:
+
+> Integer is numeric, but numeric needs not be integer
+
+
+```{r, warning = FALSE, message = FALSE}
+is.logical(TRUE)
+```
+
+
+## Conversion (changing the data type)
+
+
+```{r, warning = FALSE, message = FALSE}
+as.character(2.5)
+```
+
+```{r, warning = FALSE, message = FALSE}
+as.numeric("2.5")
+```
+
+```{r, warning = FALSE, message = FALSE}
+as.integer(2.5)
+```
+
+```{r, warning = FALSE, message = FALSE}
+as.numeric(TRUE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+as.numeric(FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+as.character(TRUE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+as.numeric("I love coding!")
+```
+
+> Caution!
+
+> Conversion is not always possible, there is a hierarchy!
+
+
+
+## Working with objects
+
+## Object classes
+
+- Functions
+  - Built-in (base R or loaded packages)
+  - Those we code ourselves
+
+- Vectors
+  - Arrays of data of the same type
+
+- Matrices
+  - Two dimensional arrays of data of the same type
+    - Rows and columns
+
+- Lists
+  - Arrays of data of any type
+    - Mixed numericals and characters
+    - Arrays of lists
+    - Mixed numericals, characters, and lists
+    - Mixed lists of different lengths
+    - Mixed data frames, etc.
+
+- Data frames
+  - Arrays of vectors of different type, but same length
+
+> Caution!
+
+> Data type and features that come with object class determine the type of operations that we can apply
+
+
+## Functions
+
+- The code that is written to be called on multiple occasions and applied on multiple objects
+
+- Previously prepared by others, uploaded to CRAN in bundles (packages)
+  - Available upon installing and loading the package
+  - Most of the time this will be enough
+  
+- Ad hoc created by users
+  - Available upon running the code within a session, called later on
+  - One example: a function that back-transforms inversely transformed RT
+  
+```{r, warning = FALSE, message = FALSE}
+X = 777
+Y = -1000/X
+
+# Function that back-transformes from -1000/X to X
+
+trans <- function(x)
+  {
+  rezultat <- -1000/x
+  return(rezultat)
+}
+```
+
+- Can be applied in future to any value/variable
+
+```{r, warning = FALSE, message = FALSE}
+X
+Y
+trans(Y)
+trans(1000)
+```
+
+- R can be used as any other programming language
+  - Has loops, conditionals etc.
+  - Useful for repetitive tasks
+
+## Vectors
+
+- Creating vector of numeric values
+
+```{r, warning = FALSE, message = FALSE}
+c(1,2,3,4,5,6,7,8,9,10) 
+```
+
+
+> c is short for combine
+
+- Creating a numerical vector with increasing values 1 to 10
+```{r, warning = FALSE, message = FALSE}
+1:10 
+```
+
+
+- Creating a numerical vector with values 1 to 10, increasing by 2
+```{r, warning = FALSE, message = FALSE}
+seq(1,10,2)
+```
+
+- Creating a numerical vector with number 1 repeated five times
+
+```{r, warning = FALSE, message = FALSE}
+rep(1, 5) 
+```
+
+- Creating a numerical vector with increasing sequence 1 to 10, repeated five times
+
+```{r, warning = FALSE, message = FALSE}
+rep(1:10,2) 
+```
+
+
+- Creating a vector of characters, e.g. fruit
+
+```{r, warning = FALSE, message = FALSE}
+c("apple", "peach", "banana", "cherry", "mango")
+```
+
+- and numerical vector of their assigned prices
+
+```{r, warning = FALSE, message = FALSE}
+c(50,30,15,45,25)
+```
+
+- To have a clear idea of the referent for each price, we can assign a name to each price
+
+```{r, warning = FALSE, message = FALSE}
+c("apple"=50, "peach"=30, "banana"=15, "cherry"=45, "mango"=25)
+```
+
+- Doing the same in a different way
+
+```{r, warning = FALSE, message = FALSE}
+price <- c(50,30,15,45,25)
+fruit <- c("apple", "peach", "banana", "cherry", "mango")
+names(price) <- fruit
+price
+```
+
+- Inspect if it is a vector
+
+```{r, warning = FALSE, message = FALSE}
+is.vector(price)
+```
+
+- Each object has its internal structure that we can inspect
+
+```{r, warning = FALSE, message = FALSE}
+str(price)
+```
+
+> What did we just do by names(prices)?
+
+> We assigned values of vector fruits to corresponding values of the attribute names
+
+
+
+
+## Vector length
+
+
+- What is the vector length (how many elements does a vector have)?
+
+```{r, warning = FALSE, message = FALSE}
+length(price)
+```
+
+- Single value can also be a vector (of the length 1)
+
+```{r, warning = FALSE, message = FALSE}
+is.vector(25)
+```
+
+```{r, warning = FALSE, message = FALSE}
+length(25)
+```
+
+
+
+## Accessing vector elements
+
+- Using an index
+  - accessing the first element of the vector price; accessing the element with index 1
+```{r, warning = FALSE, message = FALSE}
+price[1] 
+```
+
+
+> Caution!
+
+> R counter starts from 1 (not from 0 as programming languages typically do), Therefore, the first element of vector has index 1
+
+
+- Using the names of the elements (if they exist)
+
+```{r, warning = FALSE, message = FALSE}
+price["apple"]
+```
+
+- To extract the first three elements
+
+```{r, warning = FALSE, message = FALSE}
+price[1:3]
+```
+
+- To extract the second, the third, and the fourth element
+
+```{r, warning = FALSE, message = FALSE}
+price[2:4]
+```
+
+- The same using names of the elements
+
+```{r, warning = FALSE, message = FALSE}
+price[c("peach", "banana", "cherry")]
+```
+
+- Pay attention to the sequence
+
+```{r, warning = FALSE, message = FALSE}
+price[c("cherry", "banana")]
+```
+
+```{r, warning = FALSE, message = FALSE}
+price[c(3,4)]
+```
+
+```{r, warning = FALSE, message = FALSE}
+price[c(4,3)]
+```
+
+- To omit an element (i.e. extract all except one)
+  - all except the first element
+  
+```{r, warning = FALSE, message = FALSE}
+price[-1] 
+```
+
+  - all except the third and the fourth
+  
+```{r, warning = FALSE, message = FALSE}
+price[c(-3,-4)] 
+```
+
+- To sort the values of the vector
+  - increasing (decreasing = FALSE is the default)
+
+```{r, warning = FALSE, message = FALSE}
+sort(price)
+```
+
+  - decreasing
+  
+```{r, warning = FALSE, message = FALSE}
+sort(price, decreasing = TRUE)
+```
+
+- To assign ranks to the elements of the vector
+  - increasing
+  
+```{r, warning = FALSE, message = FALSE}
+order(price)
+```
+
+  - decreasing
+  
+```{r, warning = FALSE, message = FALSE}
+order(price, decreasing = TRUE) 
+```
+
+
+
+
+
+## Matrices
+
+- Creating a matrix of six elements (numbers 1-6) distributed in two rows (and consequently three columns)
+  
+```{r, warning = FALSE, message = FALSE}
+matrix(1:6, nrow=2) 
+```
+
+> Fun fact
+
+> To understand why this command makes sense, imagine a matrix as a vector arranged in two dimensions (rows and colums)
+
+- Creating a matrix of six elements (numbers 1-6) distributed in three rows (and consequently two columns)
+
+```{r, warning = FALSE, message = FALSE}
+matrix(1:6, nrow=3) 
+```
+
+- Creating a matrix by stating both number of columns and number of rows explicitly
+
+```{r, warning = FALSE, message = FALSE}
+matrix(1:6, nrow=3, ncol=2) 
+```
+
+- Creating a matrix in which numbers increase within a row (not within a column)
+
+```{r, warning = FALSE, message = FALSE}
+matrix(1:6, nrow=3, byrow=TRUE) 
+```
+
+- Creating a matrix by "gluing" two vectors as two columns
+
+```{r, warning = FALSE, message = FALSE}
+cbind(1:3,4:6) 
+```
+
+- Creating a matrix by "gluing" two vectors as two rows
+
+```{r, warning = FALSE, message = FALSE}
+rbind(1:3,4:6) 
+```
+
+- Expanding an existing matrix by adding a column
+
+```{r, warning = FALSE, message = FALSE}
+M <- cbind(1:3,4:6) 
+cbind(M,7:9) 
+```
+
+- Expanding an existing matrix by adding a row
+
+```{r, warning = FALSE, message = FALSE}
+rbind(M,c(3.5,6.5)) 
+```
+
+> Fun fact
+
+> Notice how all of the elements contain decimals, i.e. became of class numeric (not integer). This is because a matrix must contain all data of the same class, hence all the data are conversed.
+
+- Similarly
+
+```{r, warning = FALSE, message = FALSE}
+rbind(M,c("a","b")) 
+```
+
+> This time all data are conversed to characters
+
+- Naming the columns
+
+```{r, warning = FALSE, message = FALSE}
+colnames(M) <- c("First column", "Second column")
+M
+```
+
+- Naming the rows
+
+```{r, warning = FALSE, message = FALSE}
+rownames(M) <- c("First row", "Second row", "Third row")
+M
+```
+
+
+- Accessing a single element of the matrix using row index and column index
+
+```{r, warning = FALSE, message = FALSE}
+M[3,2] 
+```
+
+- Accessing a single element of the matrix using row name and column name
+
+```{r, warning = FALSE, message = FALSE}
+M["Third row", "Second column"]
+```
+
+
+- Accessing a single element of the matrix using row index and column name
+
+
+```{r, warning = FALSE, message = FALSE}
+M[3, "Second column"]
+```
+
+
+
+- Accessing the entire row of the matrix
+
+```{r, warning = FALSE, message = FALSE}
+M[3,] 
+```
+
+> Caution
+
+> Do not forget the comma
+
+- Accessing the entire column of the matrix
+
+```{r, warning = FALSE, message = FALSE}
+M[,2] 
+```
+
+- Accessing a matrix within a matrix
+
+```{r, warning = FALSE, message = FALSE}
+M[2:3, 1] 
+```
+
+```{r, warning = FALSE, message = FALSE}
+M[2:3, 1:2] 
+```
+
+
+
+## Lists
+
+- Creating a list of four elements
+  - Name (character)
+  - Student ID (character)
+  - Test score (numeric)
+  - Passed the exam? (logical)
+  
+```{r, warning = FALSE, message = FALSE}
+list("John Smith", "PS18/0056", 89, TRUE) 
+```
+
+> Fun fact
+
+> The structure of the list is more complicated. Nevetheless, you will see it often!
+
+> Why not make a vector instead? Creating a vector of these values would convert all data to character (depriving us of the possibility to apply arithmetic operations to numbers -- numbers would become plain text)
+
+- Let's try to do that:
+```{r, warning = FALSE, message = FALSE}
+c("John Smith", "PS18/0056", 89, TRUE)
+```
+
+> Therefore, the complication is justified. Let us delve into it!
+
+```{r, warning = FALSE, message = FALSE}
+list("John Smith", "PS18/0056", 89, TRUE)
+```
+
+- This output is different from the previous outputs we have inspected.
+  - This list contains four elements.
+  - Each element is a vector with single element (length is 1)
+
+- Assigning a name to each element of a list
+
+```{r, warning = FALSE, message = FALSE}
+list (Name = "John Smith", StudentID = "PS18/0056", TestScore = 89, Passing = TRUE)
+```
+
+- assigning a name to each element of a list by using attribute names
+  - Assign the list to variable student
+  - Assign the vector of characters to the attribute names of the list student
+
+```{r, warning = FALSE, message = FALSE}
+student <- list("John Smith", "PS18/0056", 89, TRUE) 
+names (student) <- c("Ime", "Indeks", "Poeni", "Ocena") 
+student 
+```
+
+- Inspecting the structure of the object
+
+```{r, warning = FALSE, message = FALSE}
+str(student) 
+```
+
+> Fun fact
+
+> A list can be an element of another list, e.g. data on the student who co-authored research report
+
+- Create a list for student collaborator
+```{r, warning = FALSE, message = FALSE}
+student_collaborator <- list(Name = "Jane Parker", Passing = FALSE) 
+```
+
+- Expand the original list by adding a list with data on student collaborator
+
+```{r, warning = FALSE, message = FALSE}
+student <- list (Name = "John Smith", StudentID = "PS18/0056", TestScore = 89, 
+                 Passing = TRUE, Collaborator = student_collaborator) 
+student
+```
+
+> Fun fact
+
+> This can go on forever
+
+> Caution
+
+> Be carefull, as accessing the elements of the list is a bit more complicated, and gets more complicated if we continue to add a list within a list within a list
+
+
+- Accessing data in lists requires attention.
+  - Elements of lists are also vectors or lists
+  - Hence, if we require access to the first element, we will access a vector/list (not the data inside)
+
+- Accessing elements of a list
+```{r, warning = FALSE, message = FALSE}
+student[1]
+```
+
+```{r, warning = FALSE, message = FALSE}
+student["Name"]
+```
+
+```{r, warning = FALSE, message = FALSE}
+student[c(1,2)]
+```
+
+```{r, warning = FALSE, message = FALSE}
+student[c("Name","StudentID")]
+```
+
+- Accessing data within an element of a list
+
+```{r, warning = FALSE, message = FALSE}
+student[[1]]
+```
+
+```{r, warning = FALSE, message = FALSE}
+student[["Name"]]
+```
+
+> Fun fact
+
+> $ can be used instead of [[]]
+
+```{r, warning = FALSE, message = FALSE}
+student$Name
+```
+
+- Accessing the name of the student collaborator
+
+```{r, warning = FALSE, message = FALSE}
+student[[5]][[1]]
+```
+
+```{r, warning = FALSE, message = FALSE}
+student[[c(5,1)]]
+```
+
+```{r, warning = FALSE, message = FALSE}
+student$Collaborator$Name
+```
+
+- Using $ or [[]] to add new elements
+
+```{r, warning = FALSE, message = FALSE}
+score <- c(Activity = 12, TermPaper = 17, MidTerm = 23) 
+student$OtherScores <- score
+student
+```
+
+- Adding similar data to a sublist 
+```{r, warning = FALSE, message = FALSE}
+score_collab <- c(Activity = 9, TermPaper = 25, MidTerm = 37)
+student$Collaborator$OtherScores <- score_collab
+student
+```
+
+
+> Lists are the least tidy object class (Honestly, they are a mess)
+
+
+## Data frames
+
+- Precisely the object class we will be using most frequently
+  - What we colloquilly refer to as data
+
+- Caution
+  - It is not the matrix! Matrices contain data of the same type. In our data we typically have a mixture of data types, e.g. numeric (RT, Age), characters (subject id, category labels), etc. 
+  - Similar to matrix: data in rows and columns of the same length
+  - Similar to lists: data of different type (however, data within a column must be of the same type, as they typically are, e.g. RT)
+  - Advantage: data in data frame are accessed more easily than data in lists
+
+- Creating a dataframe
+
+```{r, warning = FALSE, message = FALSE}
+Code <- c("s1", "s2", "s3", "s4") 
+Factor <- c("control_group", "experimental_group", "control_group", 
+            "experimental_group") 
+Measure <- c(7, 15, 5, 11)
+my_data <- data.frame(Code, Factor, Measure) 
+my_data 
+```
+
+> Fun fact
+
+> In reality, we will rarely create data frames manually. We will typically load it from the existing data file (.txt, .csv, SQL, Excel, SPSS, etc).
+
+- Changing column names
+
+```{r, warning = FALSE, message = FALSE}
+my_data <- data.frame(ID = Code, Group = Factor, DependentVariable = Measure)
+my_data
+```
+
+- Changing column names (again)
+
+```{r, warning = FALSE, message = FALSE}
+names(my_data) <- c("Participant", "Manipulation", "Recall")
+my_data
+```
+
+- Inspect the structure of data frame
+
+```{r, warning = FALSE, message = FALSE}
+str(my_data)
+```
+
+> Fun fact
+
+> We can see that da data frame is actually a list, but a list of vectors of the same length
+
+
+Accessing the elements of data frame is simple and similar to assessing elements of matrix
+
+- Accessing single element of a dataframe
+
+```{r, warning = FALSE, message = FALSE}
+my_data[3, 2]
+```
+
+```{r, warning = FALSE, message = FALSE}
+my_data[3, "Manipulation"]
+```
+
+- Accessing the entire row
+
+```{r, warning = FALSE, message = FALSE}
+my_data[3, ]
+```
+
+- Accessing the entire column
+
+```{r, warning = FALSE, message = FALSE}
+my_data[ , 2]
+```
+
+```{r, warning = FALSE, message = FALSE}
+my_data[ ,"Manipulation"]
+```
+
+- Accessing a dataframe within a dataframe
+
+```{r, warning = FALSE, message = FALSE}
+my_data[c(2,4), c("Participant", "Recall")]
+```
+
+> Fun fact: 
+
+> Think about a data frame as a list of column vectors
+
+- Hence, accessing the vector in the third column
+
+```{r, warning = FALSE, message = FALSE}
+my_data[[3]]
+```
+
+```{r, warning = FALSE, message = FALSE}
+my_data[["Recall"]]
+```
+
+```{r, warning = FALSE, message = FALSE}
+my_data$Recall
+```
+
+- If we use single pair of brackets, we will not obtain a vector, but a data frame, i.e. a list that contains only the column vector
+
+```{r, warning = FALSE, message = FALSE}
+my_data[3]
+```
+
+```{r, warning = FALSE, message = FALSE}
+my_data["Recall"]
+```
+
+> Caution: 
+
+> The class of object we obtain depends on the access strategy.
+
+- Accessing a subset of a dataframe by setting a filter based on a variable values
+
+  - Extract data frame subset containing only the rows with Recall>10, keeping all the columns
+  
+```{r, warning = FALSE, message = FALSE}
+my_data[my_data$Recall>10,] 
+```
+
+  - Extract data frame subset containing the first three rows and all columns
+  
+```{r, warning = FALSE, message = FALSE}
+my_data[1:3,] 
+```
+
+  - Extract data frame subset containing only the first and the fourth row, keeping all columns
+
+```{r, warning = FALSE, message = FALSE}
+my_data[c(1,4),] 
+```
+
+  - Extract data frame subset containing only participants from control group keeping all columns
+
+```{r, warning = FALSE, message = FALSE}
+my_data[my_data$Manipulation=="control_group",] 
+```
+
+```{r, warning = FALSE, message = FALSE}
+subset(my_data, Manipulation=="control_group") 
+```
+
+- Extracting data frame subset using multiple criteria
+
+  - Only participants from control group with recall above 5
+  
+```{r, warning = FALSE, message = FALSE}
+my_data[my_data$Manipulation=="control_group" & my_data$Recall>5,]
+```
+
+- Subsetting both rows and columns
+
+  - Participants from control group, only first three columns
+  
+```{r, warning = FALSE, message = FALSE}
+my_data[my_data$Manipulation=="control_group", 1:3] 
+```
+
+```{r, warning = FALSE, message = FALSE}
+my_data[my_data$Manipulation=="control_group", c(1,2,3)] 
+```
+
+```{r, warning = FALSE, message = FALSE}
+my_data[my_data$Manipulation=="control_group", c("Participant","Manipulation",
+                                                 "Recall")] 
+```
+
+- Adding a column to a data frame
+
+```{r, warning = FALSE, message = FALSE}
+iq <- c(101, 124, 110, 98) 
+my_data$IQ <- iq  # or: my_data[["IQ"]] <- iq
+my_data
+```
+
+```{r, warning = FALSE, message = FALSE}
+DominantHand <- c("righthanded", "lefthanded", "lefthanded", "righthanded") 
+my_data <- cbind(my_data, DominantHand)
+my_data
+```
+
+- Adding a raw to a data frame
+
+```{r, warning = FALSE, message = FALSE}
+# first create future row as a data frame
+s5<- data.frame(Participant = "s5", Manipulation = "control_group", 
+                Recall = 10, IQ = 103, DominantHand = "righthanded") 
+# merge two data frames
+my_data <- rbind(my_data, s5) 
+my_data
+```
+
+- Creating another data frame and merging it with the existing data frame
+
+```{r, warning = FALSE, message = FALSE}
+Code_2 <- c("s6", "s7", "s8", "s9") 
+Factor_2 <- c("control_group", "experimental_group", "control_group", "experimental_group") 
+Measure_2 <- c(8, 14, 6, 18) 
+IQ_2 <- c(99, 123, 109, 102)
+DominantHand_2 <- c("righthanded", "lefthanded", "lefthanded", "righthanded")
+my_data_2 <- data.frame(Code_2, Factor_2, Measure_2, IQ_2, DominantHand_2) 
+my_data_2 
+names(my_data_2) <- c("Participant", "Manipulation", "Recall", "IQ", "DominantHand") 
+my_data_2 
+my_data <- rbind(my_data, my_data_2) 
+my_data 
+```
+
+> Fun fact
+
+> After merging, we kept the original name. R allows to replace the values of the same variable with the new content. 
+
+- The same applies to column names
+
+- To replace Recall values with log of their values
+
+```{r, warning = FALSE, message = FALSE}
+my_data$Recall <- log(my_data$Recall)
+```
+
+- To reverse the process
+
+```{r, warning = FALSE, message = FALSE}
+my_data$Recall <- exp(my_data$Recall)
+```
+
+## Working with files
+
+- Data frame can be saved on a hard disk (outside of R)
+
+```{r, warning = FALSE, message = FALSE}
+write.table(my_data, file = "Data_practice.txt", append = FALSE, 
+            sep = "\t", eol="\n", col.names=TRUE, row.names=FALSE)
+```
+
+> Fun fact
+
+> If the path is not specified, on Windows R will automatically access Documents as a working directory
+
+- Typically, you will want to define the path manually
+
+```{r, warning = FALSE, message = FALSE}
+write.table(my_data, file = "c:/Eowyn/Dokumenti/Obuke/!MOJE_2026/Data_practice.txt", 
+            append = FALSE, sep = "\t",eol="\n", col.names=TRUE, row.names=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+write.table(my_data, file = "c:/Eowyn/Dokumenti/Obuke/!MOJE_2026/Data_practice.csv", 
+            append = FALSE, sep = ",",eol="\n", col.names=TRUE, row.names=FALSE)
+```
+
+
+> Caution
+
+> On Windows R uses "/" instead of backslash
+
+
+## Other manipulations on data frames
+
+- Data wrangling (next session)
+
+> Once you master the basic operations, you can cross them. Sky is the limit!
+
+> Or you can ask Claude for help :)
+
+
+## Thank you!
+
+

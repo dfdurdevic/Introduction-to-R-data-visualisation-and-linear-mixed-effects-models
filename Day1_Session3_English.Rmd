@@ -1,0 +1,1399 @@
+---
+title: 'Day 1, Session 3: Data Visualization in R'
+author: "Dusica Filipovic Durdevic"
+date: "2026-09-14"
+output:
+  revealjs::revealjs_presentation:
+    theme: simple
+    highlight: pygments
+    transition: none
+    center: false
+    css: custom.css
+    slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## First we make sure our working directory is set to what we want -- ideally, where our data is located
+```{r, warning = FALSE, message = FALSE}
+setwd("C:/Eowyn/Dokumenti/Obuke/!MOJE_2026")
+```
+
+- If you don't believe it, you can check:
+```{r, warning = FALSE, message = FALSE}
+getwd()
+```
+
+
+## Next, we load a small and clean data frame
+
+- If we haven't set the working directory, the path needs to be adjusted to match your own hard drive:
+
+```{r, warning = FALSE, message = FALSE}
+df <- read.table("Day1_Session3_data.txt",sep="\t", header=TRUE)
+```
+
+- Let's check the dimensions (number of rows and columns) of the data frame
+```{r, warning = FALSE, message = FALSE}
+dim(df)
+```
+
+- We see there are 100 rows and 6 columns (we can also see this in the Environment pane)
+
+- Let's inspect the column names
+```{r, warning = FALSE, message = FALSE}
+colnames(df)
+```
+
+
+
+## Let's take a quick look at the first few rows
+
+```{r, warning = FALSE, message = FALSE}
+head(df)
+```
+
+- We can see that the first column contains participant codes, the second contains group membership within the Manipulation variable, the third contains the same for the DominantHand variable, the fourth for ReadingExperience, the fifth for IQ, and the sixth for RT
+
+
+
+## We can check the data type in each column
+
+```{r, warning = FALSE, message = FALSE}
+class(df$Participant)
+```
+
+```{r, warning = FALSE, message = FALSE}
+class(df$Manipulation)
+```
+
+```{r, warning = FALSE, message = FALSE}
+class(df$DominantHand)
+```
+
+
+```{r, warning = FALSE, message = FALSE}
+class(df$ReadingExperience)
+```
+
+```{r, warning = FALSE, message = FALSE}
+class(df$IQ)
+```
+
+```{r, warning = FALSE, message = FALSE}
+class(df$RT)
+```
+
+
+
+## Let's see which levels exist for our categorical variables
+
+```{r, warning = FALSE, message = FALSE}
+levels(df$Manipulation)
+```
+
+> Caution
+
+> Remember the character vs factor distintion!
+
+- Let's change the type of categorical variables
+
+```{r, warning = FALSE, message = FALSE}
+df$Participant <- as.factor(df$Participant)
+```
+
+```{r, warning = FALSE, message = FALSE}
+levels(df$Participant)
+```
+
+```{r, warning = FALSE, message = FALSE}
+df$Manipulation <- as.factor(df$Manipulation)
+levels(df$Manipulation)
+```
+
+```{r, warning = FALSE, message = FALSE}
+df$DominantHand <- as.factor(df$DominantHand)
+levels(df$DominantHand)
+```
+
+## We can also inspect the type of variables all at once:
+
+```{r, warning = FALSE, message = FALSE}
+str(df)
+```
+
+## We can also visually inspect the variables in the data frame (and their relationship):
+
+```{r, warning = FALSE, message = FALSE}
+plot(df)
+```
+
+## Let's visualize a single variable
+
+- start by building a frequency table using table(), then display that table
+
+```{r, warning = FALSE, message = FALSE}
+barplot(table(df$IQ))
+```
+
+## Let's add axis labels, a title, and change the color
+
+```{r, warning = FALSE, message = FALSE}
+barplot(table(df$IQ), 
+        xlab="IQ", # x-axis label
+        ylab="Frequency", # y-axis label
+        main="Distribution of IQ in the sample", # title at the top of the plot
+        col="red") # bar color
+```
+
+## Let's add descriptive statistics to the title
+
+```{r, warning = FALSE, message = FALSE}
+barplot(table(df$IQ), 
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Distribution of IQ in the sample: M=", 
+               mean(df$IQ)), # combine text and values
+        col="red")
+```
+
+## We can save the plot to a file
+
+```{r, warning = FALSE, message = FALSE}
+png("Figure1.png", 
+    width=400, height=400)
+
+plot(density(df$IQ))
+
+dev.off()
+
+```
+
+## Graphical parameters
+
+- A plot, as an object R operates on, has a number of characteristics
+
+- We can control the plot's appearance ourselves by setting values for graphical parameters
+
+- We do this with the par() command, listing inside the parentheses what we want to set
+
+- To find out which parameters exist and how to change them, type this command or check the Help:
+
+```{r, warning = FALSE, message = FALSE}
+par() # also ?par
+```
+
+> Fun fact
+
+> The output of par() is a list
+
+```{r, warning = FALSE, message = FALSE}
+class(par()) 
+```
+
+## You can also save your favorite settings into a variable, then call it later
+- E.g.:
+```{r, warning = FALSE, message = FALSE}
+# my_style <- par(bg="transparent", col = "red", cex = 0.7)
+# par(my_style)
+```
+
+## Let's display the IQ distribution separately for left-handed and right-handed participants
+
+```{r, warning = FALSE, message = FALSE}
+par(mfrow=c(1, 2)) # set the graphical parameter to a grid of 1 row and 2 columns
+
+barplot(table(df[df$DominantHand=="lefthanded",]$IQ)) # get IQ only for left-handed 
+      
+barplot(table(df[df$DominantHand=="righthanded",]$IQ)) # get IQ only for right-handed 
+        
+par(mfrow=c(1,1)) # reset the graphical parameter to a grid of 1 row and 1 column 
+                  # to avoid future confusion
+```
+
+- The same plot with labels and title included
+
+```{r, warning = FALSE, message = FALSE}
+par(mfrow=c(1, 2)) 
+
+barplot(table(df[df$DominantHand=="lefthanded",]$IQ), 
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Distribution of IQ among left-handed participants: M=", 
+               mean(df[df$DominantHand=="lefthanded",]$IQ)), 
+        col="red")
+
+barplot(table(df[df$DominantHand=="righthanded",]$IQ), 
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Distribution of IQ among right-handed participants: M=", 
+               mean(df[df$DominantHand=="righthanded",]$IQ)), 
+        col="red")
+
+par(mfrow=c(1,1)) 
+```
+
+## Let's display the IQ distribution separately for left-handed and right-handed participants, and within each, separately for the control and experimental groups
+
+```{r, warning = FALSE, message = FALSE}
+par(mfrow=c(2, 2)) # create a grid of two rows and two columns (each cell for one plot)
+
+barplot(table(df[df$DominantHand=="lefthanded" & df$Manipulation=="control_group",]$IQ))
+
+barplot(table(df[df$DominantHand=="lefthanded" & df$Manipulation=="experimental_group",]$IQ))
+
+barplot(table(df[df$DominantHand=="righthanded" & df$Manipulation=="control_group",]$IQ))
+
+barplot(table(df[df$DominantHand=="righthanded" & df$Manipulation=="experimental_group",]$IQ))
+
+par(mfrow=c(1,1))
+```
+
+> Fun fact
+
+> Plots are drawn by filling the first row left to right, then the second row. If you want them arranged by filling the first column top to bottom instead, type par(mfcol=c(2, 2))
+
+## The same plot with labels included
+
+```{r, warning = FALSE, message = FALSE}
+par(mfrow=c(2, 2)) 
+barplot(table(df[df$DominantHand=="lefthanded" & df$Manipulation=="control_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Left-handed, control group: M=", 
+               mean(df[df$DominantHand=="lefthanded" & df$Manipulation=="control_group",]$IQ)), 
+        col="red")
+
+barplot(table(df[df$DominantHand=="lefthanded" & df$Manipulation=="experimental_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Left-handed, experimental group: M=", mean(df[df$DominantHand=="lefthanded" & df$Manipulation=="experimental_group",]$IQ)), 
+        col="red")
+
+barplot(table(df[df$DominantHand=="righthanded" & df$Manipulation=="control_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Right-handed, control group: M=", 
+               mean(df[df$DominantHand=="righthanded" & df$Manipulation=="control_group",]$IQ)), 
+        col="red")
+
+barplot(table(df[df$DominantHand=="righthanded" & df$Manipulation=="experimental_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Right-handed, experimental group: M=", mean(df[df$DominantHand=="righthanded" & df$Manipulation=="experimental_group",]$IQ)), 
+        col="red")
+
+par(mfrow=c(1,1))
+```
+
+## An alternative way, which gives a bit more freedom
+
+```{r, warning = FALSE, message = FALSE}
+my_grid <- matrix(c(1, 2, 1, 3, 4, 4), nrow = 3, ncol = 2, byrow=TRUE) 
+# we create a matrix with as many cells
+# i.e. rows and columns as the number of plots we want, and
+# we arrange numbers in the matrix in the way we want the plots to be laid out,
+# where the order of the plots corresponds to the order in which we supply them
+
+my_grid # let's see what the layout matrix looks like 
+
+layout(my_grid) # ask for the layout to follow our matrix
+
+barplot(table(df[df$DominantHand=="lefthanded" & df$Manipulation=="control_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Left-handed, control group: M=", 
+               mean(df[df$DominantHand=="lefthanded" & df$Manipulation=="control_group",]$IQ)), 
+        col="red")
+
+barplot(table(df[df$DominantHand=="lefthanded" & df$Manipulation=="experimental_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Left-handed, experimental group: M=", 
+               mean(df[df$DominantHand=="lefthanded" & df$Manipulation=="experimental_group",]$IQ)), 
+        col="red")
+
+barplot(table(df[df$DominantHand=="righthanded" & df$Manipulation=="control_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Right-handed, control group: M=", 
+               mean(df[df$DominantHand=="righthanded" & df$Manipulation=="control_group",]$IQ)), 
+        col="red")
+
+barplot(table(df[df$DominantHand=="righthanded" & df$Manipulation=="experimental_group",]$IQ),
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Right-handed, experimental group: M=", 
+               mean(df[df$DominantHand=="righthanded" & df$Manipulation=="experimental_group",]$IQ)), 
+        col="red")
+
+layout(1) # reset the plot layout grid
+```
+
+## Let's make a histogram for the IQ distribution
+
+```{r, warning = FALSE, message = FALSE}
+hist(df$IQ)
+```
+
+## Same thing, but we set the number of categories ourselves
+
+```{r, warning = FALSE, message = FALSE}
+hist(df$IQ, breaks=10)
+```
+
+## Let's display the density of the IQ variable's distribution
+
+```{r, warning = FALSE, message = FALSE}
+plot(density(df$IQ))
+```
+
+## Cumulatively
+
+```{r, warning = FALSE, message = FALSE}
+plot(sort(df$IQ))
+```
+
+## Quantiles
+
+```{r, warning = FALSE, message = FALSE}
+plot(quantile(df$IQ))
+```
+
+## Deciles
+
+```{r, warning = FALSE, message = FALSE}
+plot(quantile(df$IQ, seq(0,1, 0.1)))
+```
+
+## qqplot
+
+```{r, warning = FALSE, message = FALSE}
+qqnorm(df$IQ)
+```
+
+## Scatterplot
+
+- The first argument: what is mapped to the x-axis, the second argument: what is mapped to the y-axis
+
+```{r, warning = FALSE, message = FALSE}
+plot(df$IQ, df$RT) 
+```
+
+## Let's add the correlation coefficient to the title
+
+```{r, warning = FALSE, message = FALSE}
+x=cor(df$IQ, df$RT) # calculate the correlation coefficient between two variables
+x= round(x,2) # round to two decimal places
+
+plot(df$IQ, df$RT,  
+     main=c("r=", x)) # combine text and a number (the r value) in the title
+```
+
+## Instead of points, let's display subject labels
+
+```{r, warning = FALSE, message = FALSE}
+plot(df$IQ, df$RT,
+     type="n") # set the point type to "none" -- "don't add anything"
+
+text(df$IQ, df$RT, # command for adding words instead of points to the plot; 
+                   # first we give the coordinates
+     as.character(df$Participant), # then we say what should be displayed; 
+                                   # we convert to characters, because 
+                                   # this command requires a vector of strings
+     cex=0.7) # shrink the font to make it more readable
+```
+
+## Let's add a regression line
+
+- Prepare the plot
+
+```{r, warning = FALSE, message = FALSE}
+plot(df$IQ, df$RT,
+     type="n") # set the point type to "none" -- "don't add anything"
+
+text(df$IQ, df$RT, # command for adding words instead of points to the plot; 
+                   # first we give the coordinates
+     as.character(df$Participant), # then we say what should be displayed; 
+                                   # we convert to characters, because
+                                   # this command requires a vector of strings 
+     cex=0.7) # shrink the font to make it more readable
+
+
+# Build a linear model (to calculate parameter for the regression line)
+
+lm_df <- lm(RT ~ IQ, data=df) # first we build a linear model
+# we get an object that contains the regression coefficients
+coef(lm_df) # let's see the coefficients
+
+abline(a=coef(lm_df)[1], b=coef(lm_df)[2]) 
+# based on these coefficients, draw the regression line
+
+abline(coef(lm_df)) # this is the same as the command in the line above, just shorter
+
+# Play around
+
+abline(coef(lm_df), lwd = 3) # thicken the line
+
+abline(coef(lm_df), lwd = 3, col="red") # make the line red
+
+abline(h=1700, lwd=1.5, col="blue") # add a horizontal line
+
+abline(v=110, lwd=5, col="green") # add a vertical line
+
+text(100, 1900, "I am text centered on the desired coordinates.")
+
+```
+
+## For a quick overview of the relationships among all numeric variables
+
+- Not impressive right now, since we only have three numeric variables
+
+- Once we start working with an analysis involving many numeric predictors, this will be very useful as a first check for multicollinearity
+
+```{r, warning = FALSE, message = FALSE}
+pairs(df[,c(4,5,6)]) # apply the command to all rows, columns 4 and 5 of the data frame
+```
+
+## The same plot with correlation coefficients included
+
+- We call a function that is part of the languageR package
+
+```{r, warning = FALSE, message = FALSE}
+library(languageR)
+pairscor.fnc(df[,c("ReadingExperience", "IQ","RT" )], hist=TRUE, smooth=TRUE, 
+             cex.point=1, col.points="darkgrey")
+```
+
+## Plotting a function
+
+```{r, warning = FALSE, message = FALSE}
+plot(df$IQ^2-2*df$IQ)
+```
+
+## Box and whiskers plot
+
+```{r, warning = FALSE, message = FALSE}
+boxplot(df$IQ)
+```
+
+## Let's display a Box and whiskers plot by group
+
+```{r, warning = FALSE, message = FALSE}
+par(mfrow=c(2, 2))
+boxplot(df[df$DominantHand=="lefthanded" & df$Manipulation=="control_group",]$IQ,
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Left-handed, control group: M=", 
+               mean(df[df$DominantHand=="lefthanded" & df$Manipulation=="control_group",]$IQ)), 
+        col="red")
+
+boxplot(df[df$DominantHand=="lefthanded" & df$Manipulation=="experimental_group",]$IQ,
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Left-handed, experimental group: M=", 
+               mean(df[df$DominantHand=="lefthanded" & df$Manipulation=="experimental_group",]$IQ)), 
+        col="red")
+
+boxplot(df[df$DominantHand=="righthanded" & df$Manipulation=="control_group",]$IQ,
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Right-handed, control group: M=", 
+               mean(df[df$DominantHand=="righthanded" & df$Manipulation=="control_group",]$IQ)), 
+        col="red")
+
+boxplot(df[df$DominantHand=="righthanded" & df$Manipulation=="experimental_group",]$IQ,
+        xlab="IQ", 
+        ylab="Frequency", 
+        main=c("Right-handed, experimental group: M=", 
+               mean(df[df$DominantHand=="righthanded" & df$Manipulation=="experimental_group",]$IQ)), 
+        col="red")
+
+par(mfrow=c(1,1))
+```
+
+## The same plot, with much less typing - lattice
+
+- The formula reads as: IQ as a function of the levels of the Handedness factor, grouped by the levels of the Manipulation factor
+
+```{r, warning = FALSE, message = FALSE}
+library(lattice) # load the lattice package
+bwplot(IQ ~ DominantHand | Manipulation, # the first argument is the formula defining what to display
+       data=df) # the second argument is the data frame
+```
+
+## In the same package: scatterplot by category
+```{r, warning = FALSE, message = FALSE}
+xyplot(RT ~ IQ | Manipulation, 
+       data=df) 
+```
+
+
+
+## ggplot2
+
+## ggplot2  
+
+- A package written based on the book GRAMMAR OF GRAPHICS (Wilkinson, 1999)
+
+- Currently the best and most widely used package for graphical display
+
+## ggplot2 
+
+- Every plot has at least three basic components:
+
+  - data
+  
+  - mapping variables onto axis coordinates, color, and size: aes
+  
+  - the way each observation should be displayed (points, lines, bars...): geom
+
+```{r, warning = FALSE, message = FALSE}
+library (ggplot2) # load the package
+
+ggplot(df, # define which data frame to use
+       aes(x = IQ, y = RT)) + # map variables onto axes
+geom_point() # define how the values should be displayed: here, as points
+```
+
+## ggplot layers
+
+- We can build a plot by adding layer upon layer
+
+- Using "+" to add layers
+
+```{r, warning = FALSE, message = FALSE}
+g0 = ggplot(df, aes(x=IQ, y=RT)) # save the base plot into a variable
+g0 # we see that only the axes are there
+```
+
+- Make it more appealing to the eye
+  - We will come back to this
+
+```{r, warning = FALSE, message = FALSE}
+g0 = ggplot(df, aes(x=IQ, y=RT)) + theme_bw()
+g0 
+```
+
+## Let's add points
+
+```{r, warning = FALSE, message = FALSE}
+g1 = g0 + # we add new layers using the + sign
+    geom_point() # to display points (scatterplot)
+g1
+```
+
+## Let's add a title and axis labels
+
+```{r, warning = FALSE, message = FALSE}
+g2 = g1 + 
+  ggtitle("Relationship between IQ and RT") + # give the plot a title
+  xlab("Intelligence quotient") + # give the x-axis a title
+  ylab("RT(ms)") # give the y-axis a title
+
+g2
+  
+```
+
+## geom_point: point color
+
+- Let's change the color of all points
+
+```{r, warning = FALSE, message = FALSE}
+g2 = g0 + geom_point(colour = "red") 
+g2
+```
+
+## geom_point: point shape
+
+- Let's change the shape of all points (there's a "code table")
+
+```{r, warning = FALSE, message = FALSE}
+g3 = g0 + geom_point(shape = 24)
+g3
+```
+
+## geom_point: point size
+
+- Let's change the size of all points
+
+```{r, warning = FALSE, message = FALSE}
+g4 = g0 + geom_point(size = 10)
+g4
+```
+
+## geom_point: point transparency
+
+- Useful for big data, for overcrowded plots
+
+```{r, warning = FALSE, message = FALSE}
+g0 + geom_point(size = 10, alpha = 0.5)
+```
+
+## geom_point: "spreading out" the points
+
+- Another solution for overcrowded plots
+
+```{r, warning = FALSE, message = FALSE}
+g0 + geom_jitter()
+```
+
+- To make it reproducible (since jitter creates a slightly different result each time)
+
+```{r, warning = FALSE, message = FALSE}
+g0 + geom_jitter(seed = 123)
+```
+
+## geom_point: let's add the correlation coefficient to the plot
+
+- First we load another package
+
+```{r, warning = FALSE, message = FALSE}
+library(ggpubr)
+g1 + 
+  stat_cor(method = "spearman", # choose the method
+           label.x = 92, # specify the x-coordinate where the text should start
+           label.y = 2000) # specify the y-coordinate where the text should start
+```
+
+## Regression line
+
+- Just the line
+
+```{r, warning = FALSE, message = FALSE}
+g9 = g0 + geom_smooth(method = "lm", se = FALSE)
+g9
+```
+
+## Regression line
+
+- line and 95% CI
+
+```{r, warning = FALSE, message = FALSE}
+g10 = g0 + geom_smooth(method = "lm", se = TRUE)
+g10
+```
+
+## Prediction beyond the range of recorded values
+
+- ggplot automatically draws the line only within the recorded range
+
+- If we want extrapolation, we have to ask for it explicitly:
+
+```{r, warning = FALSE, message = FALSE}
+g0 + geom_smooth(method = "lm", se = TRUE, fullrange=TRUE)
+```
+
+## Regression line
+
+- Line, CI, and individual measurements
+
+```{r, warning = FALSE, message = FALSE}
+g10 = g1 + geom_smooth(method = "lm", se = TRUE)
+g10
+```
+
+## Regression "curve"
+
+- For a quick look at non-linearity
+
+```{r, warning = FALSE, message = FALSE}
+g1 + geom_smooth(method = "loess", se = TRUE)
+```
+
+## Regression "curve"
+
+- Shrink the window size used for computing local averages (allow more curviness)
+
+```{r, warning = FALSE, message = FALSE}
+g1 + geom_smooth(method = "loess", se = TRUE, span = 0.5)
+```
+
+## Regression "curve"
+
+- Allow even more curviness
+
+```{r, warning = FALSE, message = FALSE}
+g1 + geom_smooth(method = "loess", se = TRUE, span = 0.3)
+```
+
+
+## Now that we've had a first introduction to ggplot2, let's take a more systematic look at the fundamentals
+
+## The ggplot2 plot has several components:
+
+- data 
+  - ideally a clean and tidy data frame 
+  - different layers can display different data
+
+- aes
+  - how variables are mapped onto visual characteristics
+  - mapping variables onto axis coordinates, color, and size
+
+- geom 
+  - the name of the geometric object used for drawing
+  - the way each observation should be displayed (points, lines, bars...)
+
+- stat
+  - the type of statistical transformation to apply (identity, smooth...)
+
+- position
+  - the way overlap issues are resolved
+  - how we organize elements within a plot (jittering, stacking, dodging)
+  - also how we organize multiple plots within a single image (faceting)
+
+- axes
+  - how we label them, orient them, etc.
+
+- coordinate system
+  - we will work with the Cartesian one, but others exist
+
+- themes 
+  - what general style we give the plot (classic, minimal...)
+
+## Layer: data
+
+## Layer: data
+
+- The data we are visualizing
+
+- Our data frame
+
+- Typically the first argument of the ggplot() function
+
+## Layer: aes
+
+## Layer: aes
+
+- Mapping variables onto visual characteristics
+
+- The basic case: mapping variables onto the x and y axes (we've already seen this)
+
+## Layer aes: point color
+
+- Let's make point color a function of some variable
+
+```{r, warning = FALSE, message = FALSE}
+g5 = g1 + aes(colour = Manipulation)
+g5
+```
+
+- Choosing a pallette
+
+```{r, warning = FALSE, message = FALSE}
+library(RColorBrewer)
+g1 + aes(colour = Manipulation) + 
+  scale_colour_brewer(palette = "Paired")
+```
+
+- To inspect existing pallettes
+
+```{r, warning = FALSE, message = FALSE}
+library(RColorBrewer)
+display.brewer.all() # every built-in palette
+display.brewer.all(type = "qual")  # filtered qualitative (categories)
+library(scales)
+show_col(brewer.pal(8, "Set2"))  # set of colours for 8 categories
+```
+
+- Let's make the color color-blind-friendly
+
+```{r, warning = FALSE, message = FALSE}
+library(viridis)
+# choosing pallette options: A, B, C, D, E, F, G, H
+g5 + scale_colour_viridis_d(option = "D") 
+```
+
+- Choosing specific colors for specific levels
+
+```{r, warning = FALSE, message = FALSE}
+g1 + aes(colour = Manipulation) +
+  scale_colour_manual(values = c("control_group" = "purple", "experimental_group" = "pink"))
+```
+
+
+## Layer aes: point shape
+
+- Let's make point shape a function of some variable
+
+```{r, warning = FALSE, message = FALSE}
+g6 = g5 + aes(shape = DominantHand)
+g6
+```
+
+## Layer aes: point size
+
+- Let's make point size a function of some variable
+
+```{r, warning = FALSE, message = FALSE}
+g7 = g6 + aes(size = ReadingExperience)
+g7
+```
+
+## Faceting
+
+- Splitting into "sub-plots" based on the levels of one or more categorical variables
+
+```{r, warning = FALSE, message = FALSE}
+g8 = g7 + facet_wrap(~DominantHand) 
+# for each level of the Handedness variable, make a separate plot, 
+# arrange them in a row, and "pack" them as neatly as possible
+g8
+```
+
+## Faceting
+
+- Similar, but levels arranged strictly by plot columns
+
+```{r, warning = FALSE, message = FALSE}
+g7 + facet_grid(.~DominantHand)
+```
+
+## Faceting
+
+- Similar, but levels arranged strictly by plot rows
+
+```{r, warning = FALSE, message = FALSE}
+g7 + facet_grid(DominantHand~.)
+```
+
+## Faceting
+
+- Let's make a matrix of plots:
+
+```{r, warning = FALSE, message = FALSE}
+g7 + facet_grid(DominantHand~Manipulation)
+```
+
+## A bit of wisdom: using color depending on the level at which aes() applies
+
+- Points colored differently, but a single shared line
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=IQ, y=RT)) +
+            geom_smooth(method = "lm", se = TRUE) +
+            geom_point(aes(colour = Manipulation))
+            # assign color to the aesthetic at the point level
+```
+
+## Using color depending on the level at which aes() applies
+
+- Points colored differently, and separate lines
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=IQ, y=RT, colour = Manipulation)) + 
+                        # assign color to the aesthetic at the global level
+            geom_point() +
+            geom_smooth(method = "lm", se = TRUE)
+```
+
+## Setting vs. mapping color: similar code, very different meaning
+- Now we are setting the color (giving it a single fixed value ourselves) 
+
+```{r, warning = FALSE, message = FALSE}
+g1+geom_point(colour = "purple")
+```
+
+## Now we are MAPPING color onto the value of some variable (aes deals with mapping variable values onto the visual domain, not with visual aspects themselves)
+
+```{r, warning = FALSE, message = FALSE}
+g1+geom_point(aes(colour = "purple")) 
+```
+
+> Since a variable is expected within aes, and no variable called "purple" exists, R created such a variable, because we asked it to map
+
+## Sometimes it's convenient to use color to compare regression lines
+
+- Let's create our own levels of a new variable to map colors onto
+
+```{r, warning = FALSE, message = FALSE}
+g1 + 
+  geom_smooth(aes(colour = "lm"), method = "lm", se = FALSE) +
+  geom_smooth(aes(colour = "loess_1"), method = "loess", span = 1, se = FALSE) +
+  geom_smooth(aes(colour = "loess_07"), method = "loess", span = 0.7, se = FALSE) +
+  geom_smooth(aes(colour = "loess_03"), method = "loess", span = 0.3, se = FALSE) +
+  labs(colour = "Method")
+```
+
+## Layer: geom
+
+## Layer: geom
+
+- The geometric elements we use for drawing
+
+- Instructions on how the values should be displayed
+
+- As a rule: geom_typeofdisplay()
+
+## Layer: geom
+
+- Bars, one variable
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=IQ)) + geom_bar()
+```
+
+## Layer: geom
+
+- Bars, two variables
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=IQ, fill=DominantHand)) + geom_bar()
+```
+
+## Layer: geom
+
+- Bars, two variables, proportional
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=IQ, fill=DominantHand)) + geom_bar(position="fill")
+```
+
+## Layer: geom
+
+- Histogram, frequencies
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(IQ)) + geom_histogram()
+```
+
+## Layer: geom
+
+- Histogram, probability density function
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(IQ)) + geom_histogram(aes(y = after_stat(density)))
+
+```
+
+## Layer: geom
+
+- Line, frequencies
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(IQ, colour = DominantHand)) + geom_freqpoly() 
+```
+
+## Layer: geom
+
+- Line, probability density function
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(IQ, colour = DominantHand)) + geom_freqpoly(aes(y = after_stat(density))) 
+```
+
+## Layer: geom
+
+- Probability density functions: overlapping, colored, semi-transparent areas
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(IQ, fill = DominantHand)) + geom_density(col = NA, alpha = 0.4) 
+```
+
+## Layer: geom
+
+- 2D density function: topographic map
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=IQ, y=RT)) + geom_density_2d()
+```
+
+## Layer: geom
+
+- 2D density function, color/shading
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=IQ, y=RT)) + stat_density_2d(geom="tile", aes(fill=after_stat(density)), contour=FALSE)
+```
+
+## Layer: geom
+
+- Box & whiskers
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x= Manipulation, y=IQ)) + geom_boxplot()
+```
+
+## Layer: geom
+
+- Violin
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x= Manipulation, y=IQ)) + geom_violin()
+```
+
+## Layer: geom
+
+- We've already seen the scatterplot, let's add a rug
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x= IQ, y=RT)) + geom_point() + geom_rug() 
+```
+
+## Layer: geom
+
+- Text instead of points
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x= IQ, y=RT)) + geom_text(aes(label = Participant)) 
+```
+
+## Layer: geom
+
+- The same thing...
+
+- Let's declutter the plot a bit
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x= IQ, y=RT)) + geom_text(aes(label = Participant), check_overlap = TRUE) 
+```
+
+## Layer: geom
+
+- Let's go back to points and add a line
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x= IQ, y=RT)) + geom_point() + geom_smooth() 
+```
+
+## Layer: geom
+
+- Let's add text somewhere, as we like
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x= IQ, y=RT)) + geom_point() + geom_smooth() +
+  geom_text(aes(x=100, y=1950,label = "I too am text centered on the desired spot on the plot."))
+```
+
+## Let's add a vertical line, horizontal line, arrow, text, shaded area
+
+```{r, warning = FALSE, message = FALSE}
+g2 + 
+  annotate("rect", xmin = 100, xmax = 110, 
+           ymin = 1400, ymax = 1800, 
+           alpha = 0.15, 
+           fill = "steelblue") + 
+  annotate("segment", x = 93, xend = 117, 
+           y = 1600, yend = 1600, 
+           colour = "blue", 
+           linetype = "dashed") +
+  annotate("segment", x = 94, xend = 100, 
+           y = 1950, yend = 1820,
+           arrow = arrow(length = unit(0.3, "cm")), 
+           colour = "black") +
+  annotate("text", x = 93, y = 2000, 
+           label = "Typical", 
+           colour = "darkred") +
+  geom_vline(xintercept = mean(df$IQ), 
+           linetype="dashed", 
+           color="red")
+  
+```
+
+## Layer: stat
+
+## Layer: stat
+
+- Each stat is closely tied to a geom
+
+  - e.g. for stat_bin() the basic operation is counting (geom_bar, geom_histogram)
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(IQ)) + stat_bin() 
+# does the same as geom_bar() and geom_histogram, 
+# since both of these geoms rely on this stat (counting)
+```
+
+## Layer: stat
+
+- stat_smooth() the basic operation is approximating a group of points (geom_smooth)
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(IQ,RT)) + stat_smooth(method="lm") 
+# does the same as geom_smooth(method="lm") 
+```
+
+## Layer: stat
+
+- let's display averages by category
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=Manipulation, y=RT)) + 
+  stat_summary(fun = mean, geom = "bar")
+```
+
+## Layer: stat
+
+- let's add a CI
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=Manipulation, y=RT)) + 
+  stat_summary(fun = mean, geom = "bar") + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar")
+```
+
+## Layer: position
+
+## Layer: position
+
+- I want to cross Manipulation with Handedness
+
+  - Nothing is visible, because ggplot automatically stacks bars on top of each other (position = "stack")
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=Manipulation, y=RT, fill=DominantHand)) + 
+  stat_summary(fun = mean, geom = "bar", color="black") + 
+  scale_fill_grey() # so that the bars are in shades of grey, not clashing colors
+```
+
+## Layer: position
+
+- To make them visible nicely, I need to place the bars side by side (position = "dodge")
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=Manipulation, y=RT, fill=DominantHand)) + 
+  stat_summary(fun = mean, geom = "bar", position = "dodge", color="black") + 
+  scale_fill_grey()
+```
+
+## Layer: position
+
+- For anyone who doesn't believe I'm moving them, here's proof:
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=Manipulation, y=RT, fill=DominantHand)) + 
+  stat_summary(fun = mean, geom = "bar", 
+               position = position_dodge(width = 0.30), color="black") + 
+  scale_fill_grey()
+```
+
+## Layer: position
+
+- Let's change the width of the bars
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df, aes(x=Manipulation, y=RT, fill=DominantHand)) + 
+  stat_summary(fun = mean, geom = "bar", position = "dodge", 
+               width = 0.2, color="black") + 
+  scale_fill_grey()
+```
+
+## Layer: axes
+
+## Layer: axes
+
+- we've already seen this - give the plot a title:
+
+```{r, warning = FALSE, message = FALSE}
+g1 + ggtitle("Relationship between IQ and RT")
+  
+```
+
+## Layer: axes
+
+- We've already seen this - give the axes titles:
+
+```{r, warning = FALSE, message = FALSE}
+g1 + 
+  xlab("Intelligence quotient") + 
+  ylab("RT(ms)") 
+
+```
+
+## Layer: axes
+
+- We can achieve the same thing with:
+
+```{r, warning = FALSE, message = FALSE}
+g1 + 
+  scale_x_continuous("Intelligence quotient") + 
+  scale_y_continuous("RT(ms)") 
+
+```
+
+## Layer: axes
+
+- If there's a categorical variable on the x-axis:
+
+```{r, warning = FALSE, message = FALSE}
+g11 = ggplot(df, aes(x=Manipulation, y=RT)) + 
+  geom_boxplot() +
+  scale_x_discrete(limits=c("control_group", "experimental_group")) +
+  # this lets us arrange the levels in the order we want
+  scale_y_continuous("RT(ms)") 
+
+g11
+```
+
+## Layer: axes
+
+- Defining the axis range:
+
+```{r, warning = FALSE, message = FALSE}
+g11 + coord_cartesian(ylim = c(500, 2500)) 
+
+```
+
+## Layer: axes
+
+- Rotating the plot
+
+```{r, warning = FALSE, message = FALSE}
+g11 + coord_flip()
+```
+
+## Coordinate systems
+
+- Code showing what a line and a rectangle look like in a polar coordinate system
+
+  - Borrowed from Wickham (2015)
+
+```{r, warning = FALSE, message = FALSE}
+rect <- data.frame(x = 50, y = 50)
+line <- data.frame(x = c(1, 200), y = c(100, 1))
+base <- ggplot(mapping = aes(x, y)) +
+geom_tile(data = rect, aes(width = 50, height = 50)) +
+geom_line(data = line) +
+xlab(NULL) + ylab(NULL)
+base
+base + coord_polar("x")
+base + coord_polar("y")
+```
+
+## Layer: themes
+
+## Layer: themes
+
+- Let's change the theme: classic
+
+```{r, warning = FALSE, message = FALSE}
+g2 + theme_classic()
+```
+
+## Layer: themes
+
+- let's change the theme: minimal
+
+```{r, warning = FALSE, message = FALSE}
+g2 + theme_minimal()
+```
+
+## Layer: themes
+
+- There's more
+  - In addition the basic themes, there's also the ggthemes package with an even wider selection
+
+```{r, warning = FALSE, message = FALSE}
+library(ggthemes)
+g2 + theme_gdocs() 
+g2 + theme_solarized() 
+g2 + theme_economist()  
+g2 + theme_tufte() 
+g2 + theme_wsj()   
+g2 + theme_stata()       
+g2 + theme_excel()    
+g2 + theme_gdocs()   
+```
+
+## Layer: themes
+
+- since we're already playing with theme elements,
+
+- for browsing at home:
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(data=df, aes(x=Manipulation, y=RT, fill=DominantHand)) + 
+  coord_cartesian(ylim = c(1000, 1750)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge", color="black") + 
+   scale_fill_grey() +
+   scale_x_discrete(limits=c("control_group", "experimental_group")) +
+   theme(axis.title.y = element_text(size=16), axis.title.x = element_blank()) +
+   theme(axis.text.x = element_text(size=14), axis.text.y = element_text(size=14)) +
+   theme(legend.title = element_text(size=16)) +
+   theme(legend.text = element_text(size=14)) +
+   theme(legend.position = "top") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", 
+               position = position_dodge(width = 0.90), width = 0.2) 
+```
+
+## Let's save the plot as an image:
+
+```{r, warning = FALSE, message = FALSE}
+ggsave("Figure2.jpeg", width = 5, height = 5, dpi = 300)
+```
+
+## Let's combine several plots into one panel and save it as a single image:
+
+```{r, warning = FALSE, message = FALSE}
+
+a1 = ggplot(df, aes(x=IQ, y=RT)) +
+  geom_point() +
+  xlab("Intelligence quotient") + 
+  ylab("RT(ms)") +
+  geom_smooth(method = "lm", se = TRUE)
+
+
+a2 = ggplot(df, aes(x=ReadingExperience, y=RT)) +
+  geom_point() +
+  xlab("Literacy") + 
+  ylab("RT(ms)") +
+  geom_smooth(method = "lm", se = TRUE)
+
+
+
+b1 = ggplot(df, aes(x=Manipulation, y=RT)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge", color="black") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", 
+               position = position_dodge(width = 0.90), width = 0.2) +
+  xlab("Manipulation") + 
+  ylab("RT(ms)") 
+
+b2 = ggplot(df, aes(x=DominantHand, y=RT)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge", color="black") +
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", 
+               position = position_dodge(width = 0.90), width = 0.2) +
+  xlab("Handedness") + 
+  ylab("RT(ms)") 
+
+
+library(gridExtra)
+
+My_panel = grid.arrange(a1, a2, b1, b2, nrow = 2)
+
+ggsave("Panel_of_Plots.jpeg", My_panel, width = 10, height = 10, dpi = 300)
+
+
+```
+
+- But also (and more popular recently)
+```{r, warning = FALSE, message = FALSE}
+library(patchwork)
+a1 + a2 + b1 + b2
+a1 / a2 / b1 / b2
+a1 | b2 | b1 / a2
+```
+
+## Many more possibilities exist
+
+- Various data transformations
+
+- Adding text to a desired location on the plot
+
+- Changing the arrangement of plot elements
+
+- Animated and interactive plots!
+
+- Even programming within ggplot!
+
+## For everything you don't know by heart (i.e. for most things):
+
+- Google a phrase describing what you want to accomplish (plenty of blogs out there)
+- Use the cheatsheets
+
+  - https://raw.githubusercontent.com/rstudio/cheatsheets/main/data-visualization.pdf
+
+- Vibe code! :)
+
+## Thank you!
