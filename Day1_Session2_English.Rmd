@@ -1,0 +1,934 @@
+---
+title: 'Day 1, Session 2: Data wrangling'
+author: "Dusica Filipovic Durdevic"
+date: "2026-09-14"
+output:
+  revealjs::revealjs_presentation:
+    theme: simple
+    highlight: pygments
+    transition: none
+    center: false
+    css: custom.css
+    slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Scripting preserves future efforts
+
+- Saving the code
+
+  - Saving time
+  
+  - Data reproducibility
+  
+
+
+## Loading the data 
+
+- Opening data file from the working directory
+
+```{r, warning = FALSE, message = FALSE}
+read.table("Data_practice.txt",sep="\t", header=TRUE)
+```
+
+- Loading the data / opening data file from the target directory using path
+
+```{r, warning = FALSE, message = FALSE}
+read.table("c:/Eowyn/Dokumenti/Obuke/!MOJE_2026/Podaci_vezba.txt",sep="\t", header=TRUE)
+```
+
+- Working with large data files, we will assign them a name
+
+```{r, warning = FALSE, message = FALSE}
+df <- read.table("Data_practice.txt",sep="\t", header=TRUE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+df <- read.csv("Data_practice.csv")           # comma delimited (default)
+```
+
+```{r, warning = FALSE, message = FALSE}
+df <- read.delim("Data_practice.txt")         # tab delimited (default)
+```
+
+```{r, warning = FALSE, message = FALSE}
+# library(readxl)
+# df <- read_excel("Data_practice.xlsx")
+```
+
+> Fun fact
+
+> You will come up with a name for a data frame yourself, but a common practice is to name it df
+
+> Caution
+
+> Avoid reserved names (e.g. data)
+
+
+## Data wrangling
+
+## Data wrangling
+
+- A set of procedures that we apply to a data frame before the analysis
+
+  - Cleaning the data
+    - Excluding participants, items
+    - Filtering
+    
+  - Transforming variables
+    - log-transforming, scaling
+    
+  - Reshaping the data frame
+    - Wide-to-long format
+    - Joining dataframes
+  
+  - Renaming 
+    - Variables
+    - Category levels
+  
+## Let's start
+
+- Load the data
+
+```{r, warning = FALSE, message = FALSE}
+df <- read.table("Data_practice.txt",sep="\t", header=TRUE)
+```
+
+- Inspect the number of rows and columns of the data frame
+
+```{r, warning = FALSE, message = FALSE}
+dim(df)
+```
+
+
+## Cleaning the data
+
+## Load and inspect the data
+
+- Have a quick look at the data frame
+
+```{r, warning = FALSE, message = FALSE}
+head(df)
+```
+
+- Inspect the type of variables
+
+```{r, warning = FALSE, message = FALSE}
+str(df)
+```
+
+## Conduct conversion to appropriate data type
+
+  - Base R
+
+```{r, warning = FALSE, message = FALSE}
+df$Participant = as.factor(df$Participant)
+df$Manipulation = as.factor(df$Manipulation)
+df$DominantHand = as.factor(df$DominantHand )
+df$Recall = as.numeric(df$Recall)
+df$IQ = as.numeric(df$IQ)
+```
+
+  - dplyr
+
+```{r, warning = FALSE, message = FALSE}
+library(dplyr)
+
+df = df %>%
+  mutate(
+    Participant  = as.factor(Participant),
+    Manipulation = as.factor(Manipulation),
+    DominantHand = as.factor(DominantHand),
+    Recall       = as.numeric(Recall),
+    IQ           = as.numeric(IQ)
+  )
+```
+
+- Inspect the type of variables again
+
+```{r, warning = FALSE, message = FALSE}
+str(df)
+```
+
+## Duplicated rows
+
+- Base R
+
+  - Check if there are duplicated rows
+  
+```{r, warning = FALSE, message = FALSE}
+any(duplicated(df))
+```
+
+  - Count duplicated rows
+
+```{r, warning = FALSE, message = FALSE}
+sum(duplicated(df))
+```
+
+  - Show duplicated rows
+
+```{r, warning = FALSE, message = FALSE}
+df[duplicated(df), ]
+```
+
+  - Remove duplicated rows
+
+```{r, warning = FALSE, message = FALSE}
+df = df[!duplicated(df), ]  
+```
+
+- dplyr
+
+```{r, warning = FALSE, message = FALSE}
+df %>%
+  filter(duplicated(.)) 
+```
+
+  - Remove duplicated rows
+
+```{r, warning = FALSE, message = FALSE}
+df %>%
+  distinct() 
+```
+
+## Missing values
+
+- Base R
+
+  - Check if there are any missing values
+  
+```{r, warning = FALSE, message = FALSE}
+# in total
+sum(is.na(df))
+# per column
+colSums(is.na(df)) 
+```
+
+  - Remove rows with missing values
+  
+```{r, warning = FALSE, message = FALSE}
+# remove rows with any missing value
+df_clean = na.omit(df)
+# remove rows with missing values in specific columns
+df_clean = df[complete.cases(df[, c("IQ", "DominantHand")]), ]
+```
+
+  - Replace missing values with group mean
+  
+```{r, warning = FALSE, message = FALSE}
+df$IQ[is.na(df$IQ)] = mean(df$IQ, na.rm = TRUE)
+# na.rm = TRUE tells R to ignore missing values 
+#              when calculating the mean
+```
+
+- dplyr, tidyr
+
+  - Check if there are any missing values
+  
+```{r, warning = FALSE, message = FALSE}
+df %>% 
+  summarise(across(everything(), ~ sum(is.na(.))))
+```
+
+  - Remove rows with missing values
+  
+```{r, warning = FALSE, message = FALSE}
+library(tidyr)
+
+# remove rows with any missing value
+df_clean = df %>% 
+  drop_na() 
+# remove rows with missing values in specific columns
+df_clean = df %>% 
+  drop_na(IQ, DominantHand)
+```
+
+  - Replace missing values with group mean
+  
+```{r, warning = FALSE, message = FALSE}
+df = df %>%
+  mutate(IQ = if_else(is.na(IQ), mean(IQ, na.rm = TRUE), IQ))
+```
+
+## Inspecting levels of categorical variables
+
+- Base R
+
+  - See the levels
+
+```{r, warning = FALSE, message = FALSE}
+levels(df$Manipulation)
+```
+
+  - Frequency table (count per level)
+
+```{r, warning = FALSE, message = FALSE}
+table(df$Manipulation)
+```
+
+  - Number of levels
+
+```{r, warning = FALSE, message = FALSE}
+nlevels(df$Manipulation)
+```
+
+  - If a variable is not a factor
+
+```{r, warning = FALSE, message = FALSE}
+unique(df$Manipulation)
+```
+
+  - Crosstabulaton (contingency tables)
+
+```{r, warning = FALSE, message = FALSE}
+table(df$Manipulation, df$DominantHand)
+```
+
+```{r, warning = FALSE, message = FALSE}
+xtabs(~Manipulation + DominantHand, data= df)
+```
+
+> Fun fact
+
+> ~ reads as "depending of" or "as a function of"
+
+
+- dplyr
+
+  - See the levels
+
+```{r, warning = FALSE, message = FALSE}
+df %>% 
+  distinct(Manipulation)
+```
+
+  - Frequency table (count per level)
+
+```{r, warning = FALSE, message = FALSE}
+df %>% 
+  count(Manipulation)
+```
+
+  - Number of levels
+
+```{r, warning = FALSE, message = FALSE}
+n_distinct(df$Manipulation)
+```
+
+  - Crosstabulaton (contingency tables)
+
+```{r, warning = FALSE, message = FALSE}
+df %>% 
+  count(Manipulation, DominantHand)
+```
+
+  - Percentages
+  
+```{r, warning = FALSE, message = FALSE}
+df %>%
+  count(Manipulation) %>%
+  mutate(pct = n / sum(n) * 100)
+```
+
+## Recoding variables
+
+- Base R
+
+  - Creating new variables
+
+```{r, warning = FALSE, message = FALSE}
+df$PercRecall = 100 * df$Recall / max(df$Recall)
+df$PercRecall
+```
+
+  - Rounding values
+
+```{r, warning = FALSE, message = FALSE}
+df$PercRecall = round(df$PercRecall,2)
+df$PercRecall
+```
+
+  - Combining levels
+
+```{r, warning = FALSE, message = FALSE}
+df$ManipHand = as.factor(
+                    paste(df$Manipulation, df$DominantHand, sep = "_"))
+levels(df$ManipHand)
+```
+
+  - Creating new categorical variable based on median split
+
+```{r, warning = FALSE, message = FALSE}
+df$IQ_cat_med = as.factor(
+                    ifelse(df$IQ > median(df$IQ, na.rm = TRUE), 
+                                   "highIQ", "lowIQ"))
+levels(df$IQ_cat_med)
+```
+
+  - Creating new categorical variable based on quantile split
+
+```{r, warning = FALSE, message = FALSE}
+df$IQ_cat_qu = as.factor(
+                      cut(df$IQ, 
+                      breaks = quantile(df$IQ, probs = seq(0, 1, 0.25), 
+                                        na.rm = TRUE),
+                      labels = c("Q1", "Q2", "Q3", "Q4"),
+                      include.lowest = TRUE)) # technical feature,
+                                  # otherwise they will become NA
+levels(df$IQ_cat_qu)
+table(df$IQ_cat_qu)
+```
+
+  - Creating new categorical variable by recoding IQ_cat_qu levels to average (Q2, Q3) and extreme (Q1, Q4)
+
+```{r, warning = FALSE, message = FALSE}
+df$IQ_extreme = as.factor(
+          ifelse(df$IQ_cat_qu %in% c("Q2", "Q3"), "average", "extreme"))
+levels(df$IQ_extreme)
+table(df$IQ_extreme)
+```
+
+- dplyr
+
+  - Creating new variables
+
+```{r, warning = FALSE, message = FALSE}
+df = df %>%
+  mutate(PercRecall = 100 * Recall / max(Recall, na.rm = TRUE))
+df$PercRecall
+```
+
+  - Rounding values
+
+```{r, warning = FALSE, message = FALSE}
+df = df %>%
+  mutate(PercRecall = round(PercRecall, 2))
+df$PercRecall
+```
+
+  - Combining levels
+
+```{r, warning = FALSE, message = FALSE}
+df = df %>%
+  mutate(ManipHand = as.factor(
+                        paste(Manipulation, DominantHand, sep = "_")))
+levels(df$ManipHand)
+```
+
+  - Creating new categorical variable based on median split
+
+```{r, warning = FALSE, message = FALSE}
+df = df %>%
+  mutate(IQ_cat_med = as.factor(
+                        if_else(IQ > median(IQ, na.rm = TRUE), 
+                                "highIQ", "lowIQ")))
+levels(df$IQ_cat_med)
+```
+
+  - Creating new categorical variable based on quantile split
+
+```{r, warning = FALSE, message = FALSE}
+df = df %>%
+  mutate(IQ_cat_qu = as.factor(cut(IQ,
+                               breaks = quantile(IQ, probs = seq(0, 1, 0.25), 
+                                                            na.rm = TRUE),
+                               labels = c("Q1", "Q2", "Q3", "Q4"),
+                                                   include.lowest = TRUE)))
+levels(df$IQ_cat_qu)
+table(df$IQ_cat_qu)
+```
+
+  - Creating new categorical variable by recoding IQ_cat_qu levels to average (Q2, Q3) and extreme (Q1, Q4)
+
+```{r, warning = FALSE, message = FALSE}
+df = df %>%
+  mutate(IQ_extreme = as.factor(if_else(IQ_cat_qu %in% c("Q2", "Q3"), 
+                                              "average", "extreme")))
+levels(df$IQ_extreme)
+table(df$IQ_extreme)
+```
+
+
+
+
+## Other fun stuff
+
+- Sorting the data
+
+```{r, warning = FALSE, message = FALSE}
+df[order(df$Recall),] 
+```
+
+## Calculating the sum of the column values
+
+```{r, warning = FALSE, message = FALSE}
+sum(df$Recall)
+```
+
+## Calculating the mean of the column values
+
+```{r, warning = FALSE, message = FALSE}
+mean(df$Recall)
+```
+
+## Calculating standard deviation of the column values
+
+```{r, warning = FALSE, message = FALSE}
+sd(df$Recall)
+```
+ 
+## Calculating the mean separately for factor levels
+
+```{r, warning = FALSE, message = FALSE}
+mean(df[df$Manipulation=="control_group",]$Recall) 
+```
+
+```{r, warning = FALSE, message = FALSE}
+mean(df[df$Manipulation=="experimental_group",]$Recall) 
+```
+
+## Calculating the mean separately for multiple levels at once
+
+```{r, warning = FALSE, message = FALSE}
+tapply(df$Recall, df$Manipulation, mean) 
+```
+
+```{r, warning = FALSE, message = FALSE}
+with(df, tapply(Recall, Manipulation, mean)) 
+```
+
+## Calculating means by crossing factor levels
+
+```{r, warning = FALSE, message = FALSE}
+with(df, tapply(Recall, list(Manipulation, DominantHand), mean))
+```
+
+## Descriptive statistics at once
+
+```{r, warning = FALSE, message = FALSE}
+summary(df)
+```
+
+```{r, warning = FALSE, message = FALSE}
+psych::describe(df)
+```
+
+> Caution
+
+> psych::describe() calculates descriptives for all variables, even categorical (using internal numerical values)
+
+  - Make sure to select only numerical variables when using psych::describe()
+  
+```{r, warning = FALSE, message = FALSE}
+df %>% select(where(is.numeric)) %>% psych::describe()
+df %>% select(where(is.factor)) %>% summary()
+```
+
+## Going wild and running a t-test while we're at it :)
+
+```{r, warning = FALSE, message = FALSE}
+t.test(Recall ~ Manipulation, data=df)
+```
+
+## Correlation
+
+```{r, warning = FALSE, message = FALSE}
+cor.test(df$IQ, df$Recall)
+```
+
+
+## LET'S WRANGLE REAL DATA
+
+- Today
+
+  - Using Base R
+
+- Tommorow
+
+  - Using dplyr
+    - Session 1: step by step
+    - Session 2: pipeline
+
+## Load a small (but real) dataset
+
+```{r, warning = FALSE, message = FALSE}
+df1=read.table("Dusica.nouns.2004.txt",sep="\t", header = TRUE)
+```
+
+- Inspect the number of rows and columns of the data frame
+
+```{r, warning = FALSE, message = FALSE}
+dim(df1)
+```
+
+## Cleaning the data
+
+- Have a quick look at the data frame
+
+```{r, warning = FALSE, message = FALSE}
+head(df1)
+```
+
+- Have a quick look at the column names
+
+```{r, warning = FALSE, message = FALSE}
+colnames(df1)
+```
+
+- Inspect the type of variables
+
+```{r, warning = FALSE, message = FALSE}
+str(df1)
+```
+
+## Conduct conversion to appropriate data type
+
+  - Base R
+
+```{r, warning = FALSE, message = FALSE}
+df1$Participant = as.factor(df1$Participant)
+df1$Lexicality = as.factor(df1$Lexicality)
+df1$PolyLevelCategory  = as.factor(df1$PolyLevelCategory )
+df1$Word = as.factor(df1$Word)
+df1$FreCategory = as.factor(df1$FreCategory)
+df1$PartSpeedCategory = as.factor(df1$PartSpeedCategory)
+```
+
+- Inspect the type of variables again
+
+```{r, warning = FALSE, message = FALSE}
+str(df1)
+```
+
+## Duplicated rows
+
+- Check if there are duplicated rows
+  
+```{r, warning = FALSE, message = FALSE}
+any(duplicated(df1))
+```
+
+## Missing values
+
+- Check if there are any missing values
+  
+```{r, warning = FALSE, message = FALSE}
+# in total
+sum(is.na(df1))
+# per column
+colSums(is.na(df1)) 
+```
+
+- Investigate the case of missing RT
+  
+```{r, warning = FALSE, message = FALSE}
+df1[!complete.cases(df1[ ,"RT"]), "Word"]
+# probably timeouts
+# let's check
+df1[!complete.cases(df1[ ,"RT"]), "Accuracy"]
+# yes, missing RT in combination with error indicates timeout
+```
+
+- Investigate the case of missing Frequency
+  
+```{r, warning = FALSE, message = FALSE}
+df1[!complete.cases(df1[ ,"Frequency"]), "Word"]
+# all are pseudowords
+```
+
+## Check by-participant accuracy
+
+- Create a variable that contains average accuracy per participant
+
+```{r, warning = FALSE, message = FALSE}
+df1$PartAcc = ave(df1$Accuracy, df1$Participant)
+
+sort(unique(df1$PartAcc))
+```
+
+- Exclude participants with more than 25% errors -- keep only those with accuracy 75% or higher
+
+```{r, warning = FALSE, message = FALSE}
+before_p = length(unique(df1$Participant))
+
+df1 = df1[df1$PartAcc >= 0.75, ]
+
+after_p = length(unique(df1$Participant))
+
+NumExcludedPart = before_p - after_p
+```
+
+## Check by-item accuracy
+
+- Create a variable that contains average accuracy per item (word)
+
+```{r, warning = FALSE, message = FALSE}
+df1$ItemAcc = ave(df1$Accuracy, df1$Word)
+
+sort(unique(df1$ItemAcc))
+```
+
+- Exclude items with more than 25% errors -- keep only those with accuracy 75% or higher
+
+```{r, warning = FALSE, message = FALSE}
+before_i = length(unique(df1$Word))
+
+df1n = df1[df1$ItemAcc >= 0.75, ]
+
+after_i = length(unique(df1$Word))
+
+NumExcludedItems = before_i - after_i
+```
+
+## Let's keep only words and correct responses in the data frame
+
+- only words
+```{r, warning = FALSE, message = FALSE}
+df1 = df1[df1$Lexicality == "word",]
+```
+
+- only correct responses
+```{r, warning = FALSE, message = FALSE}
+df1 = df1[df1$Error_code == "C",]
+```
+
+## Let's transform word frequency, since we know it has a log relationship with RT (Recall the linearity assumption)
+
+ - Later we will also formally check whether the relationship is linear
+   but more on that later
+   
+```{r, warning = FALSE, message = FALSE}
+df1$Freq = log(as.numeric(df1$Frequency))
+
+library(ggplot2)
+library(patchwork)
+g1 = ggplot(df1, aes(x=Frequency, y=RT)) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+
+g2 = ggplot(df1, aes(x=Freq, y=RT)) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+
+g1 | g2
+```
+
+## In addition, continuous predictors should be centered at zero
+
+- We'll see later why (when we discuss the interpretability of the intercept) and it's even better to normalize the values:
+
+```{r, warning = FALSE, message = FALSE}
+df1$logFreq = df1$Freq
+df1$Freq_z = scale(as.numeric(df1$Freq))
+```
+
+- Let's see what we did to Freq_z:
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df1, aes(x=logFreq, y=Freq_z)) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+mean(df1$logFreq)
+exp(mean(df1$logFreq))
+round(mean(df1$Freq_z),5)
+```
+
+## Let's also scale the number of senses
+
+```{r, warning = FALSE, message = FALSE}
+df1$NoS = as.numeric(df1$NoS)
+df1$NoS_z = scale(df1$NoS)
+```
+
+## Let's check whether the DV (RT) is normally distributed
+
+```{r, warning = FALSE, message = FALSE}
+g1 = ggplot(df1, aes(RT)) + geom_density()
+g2 = ggplot(df1, aes(sample=RT)) +
+  stat_qq() + stat_qq_line()
+
+g1 | g2
+```
+
+- Remove extremely short responses
+
+```{r, warning = FALSE, message = FALSE}
+df1 = df1[df1$RT > 300,]
+```
+
+## Box-Cox transformation
+
+- Calculates lambda parameter
+
+- Apply the transformation (RT ^ lambda - 1) / lambda
+
+- It boils down to:
+
+  - lambda =1
+    - no transformation
+
+  - lambda = 0
+    - log transformation
+  
+  - lambda = -1
+    - inverse transformation
+    
+
+- Make sure all RT>0
+  
+```{r, warning = FALSE, message = FALSE}
+df1 = df1[df1$RT > 0, ]
+```
+
+  - Calculate lambda
+
+```{r, warning = FALSE, message = FALSE}
+library(car)
+pt = powerTransform(df1$RT)
+summary(pt)
+lambda = pt$lambda
+lambda
+```
+
+- Calculate lambda differently
+
+```{r, warning = FALSE, message = FALSE}
+powerTransform(df1$RT)
+```
+
+  - Apply the transformation
+
+```{r, warning = FALSE, message = FALSE}
+df1$RT_bc = bcPower(df1$RT, lambda)
+```
+
+  - Inspect the change
+
+```{r, warning = FALSE, message = FALSE}
+g3 = ggplot(df1, aes(RT_bc)) + geom_density()
+g4 = ggplot(df1, aes(sample=RT_bc)) +
+  stat_qq() + stat_qq_line()
+
+(g1 | g2) / (g3 | g4) 
+```
+
+- Heuristics, if lambda is closer to -1 than to 0
+
+```{r, warning = FALSE, message = FALSE}
+df1$RT_inv = -1000/df1$RT
+```
+
+- Plot RT, RT_bc and RT_inv
+```{r, warning = FALSE, message = FALSE}
+
+g3 = ggplot(df1, aes(RT_bc)) + geom_density()
+g4 = ggplot(df1, aes(sample=RT_bc)) +
+  stat_qq() + stat_qq_line()
+g5 = ggplot(df1, aes(RT_inv)) + geom_density()
+g6 = ggplot(df1, aes(sample=RT_inv)) +
+  stat_qq() + stat_qq_line()
+
+(g1 | g2) / (g3 | g4) / (g5 | g6)
+
+```
+
+## Let's create by-item data
+
+- To compute averages by word, we use the aggregate() function
+  - The first argument is the variable we are averaging
+  - The second argument is a list defining the groups we're averaging over
+  - The third argument is the action we're applying
+
+```{r, warning = FALSE, message = FALSE}
+nouns = aggregate(df1$RT, list(df1$Word), mean)
+```
+
+- Let's name the columns
+
+```{r, warning = FALSE, message = FALSE}
+colnames(nouns) = c("Word", "MeanRT")
+```
+
+- Now let's take the columns we need from the large data frame
+
+```{r, warning = FALSE, message = FALSE}
+
+nouns_by_item = df1[, c("Word", "Length", "Freq_z", 
+                         "FreCategory", "NoS_z", 
+                         "PolyLevelCategory")]
+```
+
+- Then let's get rid of all the repeated rows, keeping only one row per word
+
+```{r, warning = FALSE, message = FALSE}
+nouns_by_item = unique (nouns_by_item)
+```
+
+- Finally, let's merge the two new data frames, using the Word column as the key for merging, both in the receiving data frame (nouns_by_item, by.x=) and in the supplying data frame (nouns, by.y=)
+  - (This can also be done via the join function — look it up and try to achieve the same thing using one of that function's variants!)
+  
+```{r, warning = FALSE, message = FALSE}
+nouns_by_item = merge(nouns_by_item, nouns, by.x = "Word", by.y = "Word")
+```
+
+## Now we have a data frame with average reaction times for words
+
+```{r, warning = FALSE, message = FALSE}
+head(nouns_by_item)
+```
+
+## Let's create by-participant data
+
+- To compute averages by participant, we use the aggregate() function
+  - The first argument is the variable we are averaging
+  - The second argument is a list defining the groups we're averaging over
+  - The third argument is the action we're applying
+
+```{r, warning = FALSE, message = FALSE}
+participants = aggregate(df1$RT, 
+                         list(df1$Participant, df1$PolyLevelCategory), mean)
+```
+
+- Let's name the columns
+
+```{r, warning = FALSE, message = FALSE}
+colnames(participants) = c("Participant", "PolyLevelCategory", "MeanRT")
+```
+
+- Now let's take the columns we need from the large data frame
+
+```{r, warning = FALSE, message = FALSE}
+
+nouns_by_participant = df1[, c("Participant", "PolyLevelCategory", "PartSpeed")]
+```
+
+- Then let's get rid of all the repeated rows, keeping only one row per participant
+
+```{r, warning = FALSE, message = FALSE}
+nouns_by_participant = unique (nouns_by_participant)
+```
+
+- Finally, let's merge the two new data frames, using the Participant column as the key for merging
+  
+```{r, warning = FALSE, message = FALSE}
+nouns_by_participant = merge(nouns_by_participant, participants, 
+                             by = c("Participant", "PolyLevelCategory"))
+```
+
+## Now we have a data frame with average reaction times for words
+
+```{r, warning = FALSE, message = FALSE}
+head(nouns_by_participant)
+```
+
+## Thank you!
+
+
+
