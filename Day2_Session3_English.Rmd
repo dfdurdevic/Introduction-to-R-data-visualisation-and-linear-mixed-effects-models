@@ -1,0 +1,984 @@
+---
+title: 'Day2, Session 3: Linear Mixed Effects Regression - Workflow'
+author: 'Dusica Filipovic Durdevic'
+date: '2026-09-15'
+output:
+  revealjs::revealjs_presentation:
+    theme: simple
+    highlight: pygments
+    transition: none
+    center: false
+    css: custom.css
+    slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## To start, let's load the packages we need
+
+```{r, warning = FALSE, message = FALSE}
+library(rms)
+library(lme4)
+library(languageR)
+library(multcomp)
+library(emmeans) #library(lsmeans)
+library(multcompView)
+library(pbkrtest)
+library(lmerTest)
+library(gbm)
+library(randomForest)
+library(party) # zameniti sa partykit ili ranger
+library(MASS)
+library(car)
+library(mgcv)
+library(itsadug)
+library(methods)
+library(effects)
+library(RePsychLing)
+library(knitr)
+library(broom)
+library(parameters)
+library(ggplot2)
+library(see)
+```
+
+
+
+## Then let's check what our working directory is
+```{r, warning = FALSE, message = FALSE}
+getwd()
+```
+
+ - if it isn't the one we want, we set it to be so (it's most convenient for it to be the one containing the data file)
+```{r, warning = FALSE, message = FALSE}
+setwd("C:/Eowyn/Dokumenti/Obuke/!MOJE_2026")
+```
+
+ - let's check whether we succeeded
+```{r, warning = FALSE, message = FALSE}
+getwd()
+```
+
+
+## Then we load and look at the data
+
+```{r, warning = FALSE, message = FALSE}
+dat=read.table("FilipovicDurdevic.Kostic.SerbianPolysemy_short.txt",sep="\t",TRUE)
+
+dim(dat)
+
+
+colnames(dat)
+
+head(dat)
+
+str(dat)
+
+```
+
+## I like to immediately put whatever will be my categorical predictor into the right format
+```{r, warning = FALSE, message = FALSE}
+dat$Participant = as.factor(dat$Participant)
+dat$Word = as.factor(dat$Word)
+```
+
+- let's look again
+```{r, warning = FALSE, message = FALSE}
+str(dat)
+```
+
+## Let's check whether there are Participants who made too many errors
+```{r, warning = FALSE, message = FALSE}
+
+sort(tapply(dat$Error_code, dat$Participant, sum)/150)
+```
+
+## based on that, let's exclude one Participant
+```{r, warning = FALSE, message = FALSE}
+dat=dat[dat$Participant!="Participant_57",]
+
+dim(dat)
+```
+
+
+## Let's check whether there are words with a large number of errors
+```{r, warning = FALSE, message = FALSE}
+sort(tapply(dat$Error_code, dat$Word, sum)/30)
+```
+
+
+## based on that, let's exclude a few words
+```{r, warning = FALSE, message = FALSE}
+dat=dat[dat$Word!="PISAK",]
+dat=dat[dat$Word!="PATENT",]
+dat=dat[dat$Word!="SFERA",]
+dim(dat)
+```
+- we excluded about 2% of the data
+
+```{r, warning = FALSE, message = FALSE}
+(4500 - 4410)/4500
+```
+
+
+
+## Let's keep only correct responses
+```{r, warning = FALSE, message = FALSE}
+
+dat=dat[dat$Error_code == "1",]
+dim(dat)
+```
+- in total we excluded about 5% of the data
+
+```{r, warning = FALSE, message = FALSE}
+(4500 - 4258)/4500
+```
+
+
+## Visual inspection of the RT distribution
+```{r, warning = FALSE, message = FALSE}
+par(mfrow=c(2,2))
+plot(sort(dat$RT))
+plot(density(dat$RT))
+qqnorm(dat$RT)
+par(mfrow=c(1,1))
+```
+
+
+## Let's exclude a few (nonsensically) very fast responses
+
+```{r, warning = FALSE, message = FALSE}
+dat=dat[dat$RT>299,]
+dim(dat)
+```
+
+
+
+## Let's check which transformation of RT is recommended
+```{r, warning = FALSE, message = FALSE}
+powerTransform(dat$RT)
+```
+
+
+## Let's apply the inverse transformation
+
+```{r, warning = FALSE, message = FALSE}
+dat$RT=-1000/dat$RT
+```
+
+
+## Let's look at how the new RT is distributed
+```{r, warning = FALSE, message = FALSE}
+par(mfrow=c(2,2))
+plot(sort(dat$RT))
+plot(density(dat$RT))
+qqnorm(dat$RT)
+par(mfrow=c(1,1))
+```
+
+## We can also test for normality
+
+```{r, warning = FALSE, message = FALSE}
+shapiro.test(dat$RT)
+ks.test(jitter(dat$RT),"pnorm",mean(dat$RT),sd(dat$RT))
+
+```
+
+
+## Let's define right away the inverse function, which we'll need for a nice y-axis when plotting RT
+```{r, warning = FALSE, message = FALSE}
+trans <- function(x){
+  rezultat <- -1000/x
+  return(rezultat)
+}
+```
+
+
+## Since the main variable in this analysis is H
+- we'll use it to illustrate how the trans function is used
+- at the same time, here we can already see that this effect might be non-linear
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(dat, aes(x=H, y=trans(RT))) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+```
+
+
+## Let's log-transform frequency
+
+```{r, warning = FALSE, message = FALSE}
+dat$freko=log(dat$freko)
+```
+
+
+## Let's examine collinearity among the predictors
+
+```{r, warning = FALSE, message = FALSE}
+
+collin.fnc(dat[,c("len", "ort", "freko", "fam","conc", "H" )])$cnumber
+```
+
+ - The kappa coefficient is huge.
+ - 0-6 low
+ - 15-29 moderate
+ - > 29 high
+
+
+
+## Since the Kappa coefficient is catastrophically large, we'll need to resolve the collinearity problem. First, let's look at what the relationship between the variables looks like
+
+```{r, warning = FALSE, message = FALSE}
+
+pairscor.fnc(dat[,c("RT", "len", "ort", "freko", "fam","conc", "H")], hist=TRUE, smooth=TRUE, cex.point=1, col.points="darkgrey")
+```
+
+## There are several strategies for resolving collinearity
+ - one option is to choose the most influential predictors
+ - or to choose one predictor from each group of related predictors
+ - or to combine several related predictors into a new score
+ - or to run a principal component analysis 
+
+
+ - to start, let's see how the predictors rank in terms of their influence on the dependent variable
+
+## randomForest
+
+```{r, warning = FALSE, message = FALSE}
+rf1 <- randomForest(RT ~ ., data = dat[,c("RT", "len", "ort", "freko", "fam","conc", "H")], importance = TRUE)
+
+varImpPlot(rf1)
+
+importance(rf1)
+```
+
+
+
+## Gradient Boosting Machines
+```{r, warning = FALSE, message = FALSE}
+dat.gbm = dat[,c("RT", "len", "ort", "freko", "fam","conc", "H")]
+
+set.seed(125)
+gbm1 = summary(gbm1 <- gbm(RT ~
+                             len + ort + freko + fam + conc + H,
+                           data=dat.gbm, n.trees=500, interaction.depth=3, shrinkage=0.001, cv.folds=5))
+
+gbm1
+```
+
+
+
+## since in this analysis we want to show that H works over and above the control, already-known variables, i.e. we are not interested in the individual control variables themselves, we choose a different approach — we run a principal component analysis on the set of control variables
+```{r, warning = FALSE, message = FALSE}
+dat.pca = prcomp(dat[,c("len", "ort","freko","fam", "conc")],
+                 center = TRUE,
+                 scale. = TRUE)
+
+summary(dat.pca)
+```
+
+## let's plot the variance
+```{r, warning = FALSE, message = FALSE}
+plot(dat.pca, type = "l")
+```
+
+## let's plot the percentage of explained variance
+```{r, warning = FALSE, message = FALSE}
+props = round((dat.pca$sdev ^ 2 / sum(dat.pca$sdev ^ 2)), 3)
+barplot(props, col = as.numeric (props > 0.05), 
+        xlab = "principal components",
+        ylab = "proportion of explained variance")
+abline (h = 0.05)
+```
+
+ - all of them explain at least 5% of the variance, so we keep them all
+
+## let's look at the loadings
+```{r, warning = FALSE, message = FALSE}
+dat.pca$rotation
+```
+
+
+## let's write out the coordinates of all words in the space of the new dimensions, creating new, non-collinear control variables
+```{r, warning = FALSE, message = FALSE}
+dat$pc_1 = dat.pca$x[,1]
+dat$pc_2 = dat.pca$x[,2]
+dat$pc_3 = dat.pca$x[,3]
+dat$pc_4 = dat.pca$x[,4]
+dat$pc_5 = dat.pca$x[,5]
+```
+
+
+## Let's examine collinearity in the new set
+```{r, warning = FALSE, message = FALSE}
+collin.fnc(dat[,c("pc_1","pc_2","pc_3", "pc_4","pc_5", "H" )])$cnumber
+```
+
+- this is already more acceptable
+ - we see that H is weakly-to-moderately correlated with some of the components
+ - however, we'll leave it as is, the Kappa coefficient is moderate, more acceptable
+ - and we want to show that H works over and above the control variables
+ 
+```{r, warning = FALSE, message = FALSE}
+pairscor.fnc(dat[,c("RT", "pc_1","pc_2","pc_3", "pc_4","pc_5", "H")], hist=TRUE, smooth=TRUE, cex.point=1, col.points="darkgrey")
+```
+
+
+
+
+
+## Let's standardize the predictors
+```{r, warning = FALSE, message = FALSE}
+dat$trial.z = scale(dat$Trial_order)
+dat$freko.z = scale(dat$freko)
+dat$len.z = scale(dat$len)
+dat$fam.z = scale(dat$fam)
+dat$conc.z = scale(dat$conc)
+dat$ort.z = scale(dat$ort)
+dat$N.z = scale(dat$N)
+dat$T.z = scale(dat$T)
+dat$H.z = scale(dat$H)
+dat$PC1 = scale(dat$pc_1)
+dat$PC2 = scale(dat$pc_2)
+dat$PC3 = scale(dat$pc_3)
+dat$PC4 = scale(dat$pc_4)
+dat$PC5 = scale(dat$pc_5)
+```
+## let's look at collinearity after scaling
+```{r, warning = FALSE, message = FALSE}
+collin.fnc(dat[,c("PC1","PC2","PC3", "PC4","PC5", "H.z" )])$cnumber
+```
+
+
+
+## besides the Kappa coefficient, VIF (variance inflation factor) can also be used
+ - a VIF greater than 5 or 10 is considered large
+```{r, warning = FALSE, message = FALSE}
+vif(lm(RT ~ len + ort + freko + fam + conc + H, data = dat))
+```
+
+
+## ##################################################################################################################################
+
+## NOW WE CAN MOVE ON TO FITTING THE MODEL
+
+ - IMPORTANT NOTE
+ - STATISTICAL MODELING IS A COMBINATION OF SCIENCE AND SKILL
+ - YOU WILL NEVER FULLY MASTER THE TECHNIQUE
+ - NEW RECOMMENDATIONS ALWAYS KEEP APPEARING
+ - AS DO NEW "RULES" THAT SHOULD BE FOLLOWED
+ - AS WELL AS NEW WAYS OF DOING IT
+
+
+
+## ##########################################################
+## STRATEGY 1
+ - we start from the simplest model
+ - we add one parameter at a time
+ - we compare models
+ - if there's no difference, the parameter isn't justified
+ - if there is a difference, the parameter is justified, we keep it
+
+
+## We start with basic models that have only the intercept among the fixed effects
+ - just Participants, and just words, as random effects, 
+ - we compare these with a model that has both, to be sure of each one's contribution
+```{r, warning = FALSE, message = FALSE}
+lmer0a <- lmer(RT ~ 1 + 
+                 (1 |Participant),
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+lmer0b <- lmer(RT ~ 1 + 
+                 (1 |Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+lmer0 <- lmer(RT ~ 1 + 
+                (1 | Participant) + 
+                (1 | Word),	
+              data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer0a, lmer0)
+
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmer0b, lmer0)
+```
+
+
+## We add trial order to the predictors
+ - first we visualize, 
+ - then we build the model 
+ - and check whether including that parameter is justified
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(dat, aes(x=trial.z, y=RT)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~Participant) 
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+lmer1a <- lmer(RT ~ trial.z + 
+                 (1 | Participant) + 
+                 (1 | Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer0, lmer1a)
+```
+
+
+## We allow trial order to have a different effect for different Participants
+
+```{r, warning = FALSE, message = FALSE}
+lmer1b <- lmer(RT ~ trial.z + 
+                 (1 + trial.z | Participant) + 
+                 (1 | Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer1b, lmer1a)
+```
+
+## We check whether the correlation between the two parameters in the random interactions is justified
+ - by creating a model without the correlation
+ - and then comparing the fits
+
+```{r, warning = FALSE, message = FALSE}
+lmer1bb <- lmer(RT ~ trial.z + 
+                  (1 + trial.z || Participant) + 
+                  (1 | Word),	
+                data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer1b, lmer1bb)		
+```
+
+ -  the correlation is not justified
+
+
+
+
+
+## Random interaction of trial order with words
+
+```{r, warning = FALSE, message = FALSE}
+lmer1c <- lmer(RT ~ trial.z + 
+                 (1 + trial.z || Participant) + 
+                 (1 + trial.z | Word),	
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer1bb, lmer1c)
+```
+
+- not justified, we go back to the previous model, lmer1bb
+
+
+
+
+## Let's add the next predictor
+ -  and check whether including it in the model is justified
+ -  i.e. whether it contributes to the explained variance
+```{r, warning = FALSE, message = FALSE}
+lmer2 <- lmer(RT ~ trial.z + PC1 +
+                (1 + trial.z || Participant) + 
+                (1 | Word),	
+              data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer1bb, lmer2)
+```
+
+
+## We add it to the random effects
+```{r, warning = FALSE, message = FALSE}
+lmer2a <- lmer(RT ~ trial.z + PC1 +
+                 (1 + PC1 | Participant) + (0 + trial.z | Participant) +
+                 (1 | Word),	
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer2, lmer2a)
+```
+
+## Is the correlation among the random effects justified
+```{r, warning = FALSE, message = FALSE}
+lmer2b <- lmer(RT ~ trial.z + PC1 +
+                 (1 | Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) +
+                 (1 | Word),	
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer2a, lmer2b)
+```
+
+ -  not justified
+
+
+
+## We test it for non-linearity
+```{r, warning = FALSE, message = FALSE}
+lmer2c <- lmer(RT ~ trial.z + poly(PC1,2) +
+                 (1 | Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) +
+                 (1 | Word),	
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer2b, lmer2c)
+```
+
+## And so on for every predictor, building up the model
+ -  and checking whether the added complication is justified by the data
+
+ -  if we get into a zone where convergence is no longer possible
+ -  we simplify the random effects structure
+ -  in order to test the fixed effects
+ -  and once we've built the final fixed-effects structure
+ -  we repeat the testing with the more complex random-effects structure added back in
+
+
+
+## Now, for the sake of illustration, let's go ahead and add H
+
+```{r, warning = FALSE, message = FALSE}
+lmer3a <- lmer(RT ~ trial.z + PC1 + H.z +
+                 (1 | Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) +
+                 (1 | Word),		
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer2b, lmer3a)
+```
+
+## We add it to the random effects
+```{r, warning = FALSE, message = FALSE}
+lmer3b <- lmer(RT ~ trial.z + PC1 + H.z +
+                 (1 + H.z| Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) +
+                 (1 | Word),		
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer3a, lmer3b)
+```
+
+## Is the correlation justified
+```{r, warning = FALSE, message = FALSE}
+lmer3c <- lmer(RT ~ trial.z + PC1 + H.z +
+                 (1 | Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) + (0 + H.z | Participant) +
+                 (1 | Word),		
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer3b, lmer3c)
+```
+
+ -  no, but we're keeping it for now, since this is our key predictor
+
+
+
+## We test it for non-linearity
+```{r, warning = FALSE, message = FALSE}
+lmer3d <- lmer(RT ~ trial.z + PC1 + poly(H, 2) +
+                 (1 + H.z| Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) +
+                 (1 | Word),		
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer3c, lmer3d)
+```
+
+ -  it is not non-linear
+
+## THE MODEL HAS ALREADY REPORTED CONVERGENCE PROBLEMS
+ - THIS MEANS WE HAVE ALREADY OVERLOADED IT WITH RANDOM EFFECTS...
+ - AND WE'VE ONLY JUST BEGUN
+
+
+## We test the interaction with fixed predictors
+```{r, warning = FALSE, message = FALSE}
+lmer3e <- lmer(RT ~ trial.z * H.z + PC1 +
+                 (1 + H.z| Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) +
+                 (1 | Word),		
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer3c, lmer3e)
+```
+ -  this interaction is not justified
+
+
+```{r, warning = FALSE, message = FALSE}
+lmer3f <- lmer(RT ~ trial.z + PC1 * H.z +
+                 (1 + H.z| Participant) + (0 + trial.z | Participant) +
+                 (0 + PC1 | Participant) +
+                 (1 | Word),		
+               data=dat, REML=FALSE)		
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer3c, lmer3f)
+```
+ -  this interaction is justified; for now, lmer3f is the best model
+
+
+
+## Only once we've shown that a predictor contributes to the explained variance are we allowed to look at whether the coefficient is statistically significant
+```{r, warning = FALSE, message = FALSE}
+summary(lmer3f)
+```
+
+
+
+####################################################################################################################		
+####################################################################################################################		
+## STRATEGY 2 
+ -  we start from the most complex, meaningful model
+ -  we remove one parameter at a time
+ -  we compare models
+ -  if there's no difference, that parameter isn't justified
+ -  if there is a difference, that parameter is justified, we keep it
+```{r, warning = FALSE, message = FALSE}
+lmerXa <- lmer(RT ~ trial.z * PC1 * H.z +
+                 (1 + trial.z * PC1 * H.z|Participant) + 
+                 (1 + trial.z |Word),	
+               data=dat, REML=FALSE)
+```
+ -  first let's try to simplify the random-effects structure
+```{r, warning = FALSE, message = FALSE}
+summary(rePCA(lmerXa))
+```
+ -  this will often fail to converge	
+
+
+
+## Because of that it's convenient to go back to a simpler random-effects structure to make things easier
+- But only for exploratory purposes (to save some time)
+  - for the final analyses, we must apply the strategy of starting with the maximum model structure (see previous session)
+```{r, warning = FALSE, message = FALSE}
+lmerX <- lmer(RT ~ trial.z * PC1 * H.z +
+                 (1 |Participant) + 
+                 (1 |Word),	
+               data=dat, REML=FALSE)
+```
+
+## Let's remove one parameter, the triple interaction, and build a new model
+```{r, warning = FALSE, message = FALSE}
+lmerX1 <- lmer(RT ~ trial.z * PC1 + 
+                    trial.z * H.z +
+                    PC1 * H.z +
+                    (1 |Participant) + 
+                    (1 |Word),	
+                    data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmerX1, lmerX)
+```
+ -  the triple interaction is not justified
+
+
+## Now let's remove one two-way interaction at a time
+```{r, warning = FALSE, message = FALSE}
+lmerX2 <- lmer(RT ~ trial.z * PC1 + 
+                 trial.z * H.z +
+                 (1 |Participant) + 
+                 (1 |Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmerX1, lmerX2)
+```
+
+ -  the PC1 by H.z interaction is justified
+
+```{r, warning = FALSE, message = FALSE}
+lmerX3 <- lmer(RT ~ trial.z * PC1 + 
+                 PC1 * H.z +
+                 (1 |Participant) + 
+                 (1 |Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmerX1, lmerX3)
+```
+ -  the trial.z by H.z interaction is not justified
+
+```{r, warning = FALSE, message = FALSE}
+lmerX4 <- lmer(RT ~ 
+                 trial.z * H.z +
+                 PC1 * H.z +
+                 (1 |Participant) + 
+                 (1 |Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmerX1, lmerX4)
+```
+ -  the trial.z by PC1 interaction is not justified
+
+
+
+## Based on these comparisons, we keep in the model only the parameters whose removal makes a difference
+
+ -  we keep only the interaction that is justified
+
+```{r, warning = FALSE, message = FALSE}
+lmerX5 <- lmer(RT ~ trial.z + 
+                 PC1 * H.z +
+                 (1 |Participant) + 
+                 (1 |Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmerX1, lmerX5)
+```
+ -  no difference, so the simpler model lmerX5 performs just as well as the more complex lmerX1
+
+
+
+
+## Let's check whether the remaining non-interaction terms are needed
+ -  what about the main effect of trial.z
+
+```{r, warning = FALSE, message = FALSE}
+lmerX6 <- lmer(RT ~ 
+                 PC1 * H.z +
+                 (1 |Participant) + 
+                 (1 |Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmerX5, lmerX6)
+```
+ -  it is justified
+ - lmerX5 is still the best model
+
+
+## Now let's bring back the random interactions
+-  IF THE MODEL WON'T CONVERGE, FIRST REMOVE THE CORRELATIONS BETWEEN RANDOM EFFECTS
+```{r, warning = FALSE, message = FALSE}
+lmerY <- lmer(RT ~ trial.z +
+                 PC1 * H.z +
+                 (1 + trial.z + PC1 * H.z | Participant) + 
+                 (1 + trial.z | Word),	
+               data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+
+anova(lmerX6, lmerY)
+```
+ -  all these random interactions contribute jointly
+ -  but
+- let's check whether all the random effects are justified
+```{r, warning = FALSE, message = FALSE}
+summary(rePCA(lmerY))
+```
+
+
+- WE SEE THAT FOR WORDS, THE ENTIRE VARIANCE IS ALREADY EXPLAINED BY A SINGLE PRINCIPAL COMPONENT, WHILE FOR ParticipantS IT IS ALREADY EXPLAINED BY 3 PRINCIPAL COMPONENTS 
+- THIS MEANS IT IS JUSTIFIED TO REMOVE 2 PARAMETERS FROM THE BY-Participant RANDOM-EFFECTS STRUCTURE
+- IT IS ALSO JUSTIFIED TO REMOVE ONE PARAMETER FROM THE BY-WORD RANDOM-EFFECTS STRUCTURE
+
+- for WORD
+- one is enough, we keep the one with the larger variance
+
+- for PARTICIPANT
+- 3 are enough
+- we remove the two with the smallest variance
+
+
+## LET'S DISPLAY THE COEFFICIENTS TO DETECT THE COMPONENTS WITH THE SMALLEST VARIANCE, WHICH WE WILL REMOVE
+
+```{r, warning = FALSE, message = FALSE}
+lmerY
+```
+
+## Let's compare the two models
+
+```{r, warning = FALSE, message = FALSE}
+lmerY1 <- lmer(RT ~ trial.z +
+                PC1 * H.z +
+                (1 + trial.z + H.z | Participant) + 
+                (1 | Word),	
+              data=dat, REML=FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmerY, lmerY1)
+```
+- no difference between the two models
+- so the added complexity was unnecessary
+
+- the final model is lmerY1
+
+
+
+## Only now are we allowed to look at the coefficients
+```{r, warning = FALSE, message = FALSE}
+summary(lmerY1)
+```
+
+
+
+
+
+
+## We still need to check whether the effects are non-linear
+
+
+
+
+## Finally, we move on to diagnostics
+```{r, warning = FALSE, message = FALSE}
+confint(lmerY1, method="Wald")
+```
+- We see that our effects are always on the same side of zero
+- except for the trial-order effect, which isn't very reliable
+
+## Now we will check whether any of the assumptions for applying a linear model have been violated:
+
+
+- Let's create a column with the predicted DV values:
+
+```{r, warning = FALSE, message = FALSE}
+dat$RT.fitted = predict(lmerY1)
+```
+
+- Let's create a column with the residuals:
+
+```{r, warning = FALSE, message = FALSE}
+dat$RT.res = residuals(lmerY1)
+```
+
+- Let's plot the correlation between the fitted values and the residuals
+ + To check whether there is homogeneity of variance
+ + This should look like a nice "egg"
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(dat, aes(x=RT.fitted, y=RT.res)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) 
+```
+
+## Let's check whether the residuals are normally distributed
+
+- This should be as close as possible to a straight line:
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(dat, aes(sample=RT.res)) +
+  stat_qq() + stat_qq_line()
+```
+
+
+## The same thing can also be done like this:
+
+```{r, warning = FALSE, message = FALSE}
+par(mfcol=c(1,2))
+qqnorm(resid(lmerY1))
+plot(fitted(lmerY1), resid(lmerY1))
+par(mfcol=c(1,1))
+```
+
+
+
+## Now we'll remove the points with large residuals
+
+- And check whether they have too much influence on the model
+- We refit the model on a subset of points whose residuals are within the range of +/-2.5 sigma
+
+```{r, warning = FALSE, message = FALSE}
+lmerY1t <- lmer(RT ~ trial.z +
+                 PC1 * H.z +
+                 (1 + trial.z + H.z | Participant) + 
+                 (1 | Word),	
+                 data=dat, 
+                 subset=abs(scale(resid(lmerY1)))<2.5,
+                 REML=FALSE)
+```
+
+- Let's compare the coefficients from the cleaned and the original model
+- there shouldn't be drastic changes
+
+```{r, warning = FALSE, message = FALSE}
+summary(lmerY1t)
+```
+
+## let's repeat the diagnostics 
+- things should now look even better
+
+```{r, warning = FALSE, message = FALSE}
+par(mfcol=c(1,2))
+qqnorm(resid(lmerY1t))
+plot(fitted(lmerY1t), resid(lmerY1t))
+par(mfcol=c(1,1))
+```
+
+
+## let's visualize the final effect of the main variable
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(dat, aes(x=H, y=trans(RT.fitted))) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+
+
+ggsave("H.lmerY1.jpg", width = 5, height = 5)
+```
+
+
+## let's make a table for the paper
+
+```{r, warning = FALSE, message = FALSE}
+sjPlot::tab_model(lmerY1t, show.se = TRUE, show.stat = TRUE, dv.labels = c("RT (ms)"))
+```
+
+
+## let's visualize the coefficients
+
+```{r, warning = FALSE, message = FALSE}
+plot(model_parameters(lmerY1t))
+```

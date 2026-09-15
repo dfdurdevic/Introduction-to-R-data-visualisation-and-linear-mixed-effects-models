@@ -1,0 +1,702 @@
+---
+title: 'Day 2, Session 1: Linear Mixed Effects Regression - Fixed Effects'
+author: "Dusica Filipovic Durdevic"
+date: "2026-09-15"
+output:
+  revealjs::revealjs_presentation:
+    theme: simple
+    highlight: pygments
+    transition: none
+    center: false
+    css: custom.css
+    slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Linear models
+
+
+- A class of models in which we try to predict variation in some measure (DV)
+  using variation in one or more other variables (IVs)
+
+- To apply them, several conditions need to be satisfied:
+
+     + a linear relationship between the IV and the DV
+        (checked before the analysis, but also during the analysis)
+     + independence of measurements, absence of collinearity between predictors
+        (checked before the analysis)
+     + homoscedasticity (absence of heteroscedasticity) - uniformity of variance
+        (checked toward the end of the analysis)
+     + normality of the residual distribution
+        (checked toward the end of the analysis)
+     + absence of influential points (actually the same as the previous point)
+        (checked both before the analysis and toward the end of the analysis)
+     + finally, the DV must follow an appropriate distribution
+        (checked before the analysis)
+
+- Different strategies exist for each of these checks,
+  but that's a topic for a separate class; first we need to cover the basics
+
+
+
+## To start, let's load the packages we need
+
+```{r, warning = FALSE, message = FALSE}
+library(lme4) # to build models
+library(lmerTest) # so that p-values are displayed
+library(ggplot2) # for plots
+library(gridExtra) # for arranging multiple plots
+library(patchwork) # for arranging multiple plots
+require(see) # for plotting model parameters
+library(languageR) # for various things
+library(lattice) # for plots
+library(parameters) # for plotting model parameters
+library(dplyr) # for data wrangling
+```
+
+## And let's load a data frame
+
+```{r, warning = FALSE, message = FALSE}
+df_n=read.table("Dusica.nouns.2004.txt",sep="\t", header = TRUE)
+```
+
+- Let's check the dimensions
+
+```{r, warning = FALSE, message = FALSE}
+dim(df_n)
+```
+
+## A quick look at the data
+
+```{r, warning = FALSE, message = FALSE}
+head(df_n)
+```
+
+## Let's take a look at the data's structure
+
+```{r, warning = FALSE, message = FALSE}
+str(df_n)
+```
+
+## Let's take care of the data types
+
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>%
+  mutate(
+    Participant       = as.factor(Participant),
+    Lexicality        = as.factor(Lexicality),
+    PolyLevelCategory = as.factor(PolyLevelCategory),
+    Word              = as.factor(Word),
+    FreCategory       = as.factor(FreCategory),
+    PartSpeedCategory = as.factor(PartSpeedCategory)
+  )
+```
+
+## Check by-participant accuracy
+
+- Create a variable that contains average accuracy per participant
+
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>%
+  group_by(Participant) %>%
+  mutate(PartAcc = mean(Accuracy, na.rm = TRUE)) %>%
+  ungroup()
+
+sort(unique(df_n$PartAcc))
+```
+
+- Exclude participants with more than 25% errors -- keep only those with accuracy 75% or higher
+
+```{r, warning = FALSE, message = FALSE}
+before_p = n_distinct(df_n$Participant)
+
+df_n = df_n %>% filter(PartAcc >= 0.75)
+
+after_p = n_distinct(df_n$Participant)
+
+NumExcludedPart = before_p - after_p
+NumExcludedPart
+```
+
+## Check by-item accuracy
+
+- Create a variable that contains average accuracy per item (word)
+
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>%
+  group_by(Word) %>%
+  mutate(ItemAcc = mean(Accuracy, na.rm = TRUE)) %>%
+  ungroup()
+
+sort(unique(df_n$ItemAcc))
+```
+
+- Exclude items with more than 25% errors -- keep only those with accuracy 75% or higher
+
+```{r, warning = FALSE, message = FALSE}
+before_i = n_distinct(df_n$Word)
+
+df_n = df_n %>% filter(ItemAcc >= 0.75)
+
+after_i = n_distinct(df_n$Word)
+
+NumExcludedItems = before_i - after_i
+NumExcludedItems
+```
+
+## Let's keep only words and correct responses in the data frame
+
+- only words
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>% filter(Lexicality == "word")
+```
+
+- only correct responses
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>% filter(Error_code == "C")
+```
+
+## Let's transform word frequency, since we know it has a log relationship with RT (Recall the linearity assumption)
+
+ - Later we will also formally check whether the relationship is linear
+   but more on that later
+   
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>%
+  mutate(Freq = log(as.numeric(Frequency)))
+
+library(patchwork)
+g1 = ggplot(df_n, aes(x=Frequency, y=RT)) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+
+g2 = ggplot(df_n, aes(x=Freq, y=RT)) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+
+g1 | g2
+```
+
+## In addition, continuous predictors should be centered at zero
+
+- We'll see later why (when we discuss the interpretability of the intercept) and it's even better to normalize the values:
+
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>%
+  mutate(
+    logFreq = Freq,
+    Freq_z  = as.numeric(scale(Freq))
+  )
+```
+
+- Let's see what we did to Freq_z:
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x=logFreq, y=Freq_z)) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+mean(df_n$logFreq)
+exp(mean(df_n$logFreq))
+round(mean(df_n$Freq_z),5)
+```
+
+## Let's also scale the number of senses
+
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>%
+  mutate(
+    NoS   = as.numeric(NoS),
+    NoS_z = as.numeric(scale(NoS))
+  )
+```
+
+## Let's check whether the DV (RT) is normally distributed
+
+```{r, warning = FALSE, message = FALSE}
+g1 = ggplot(df_n, aes(RT)) + geom_density()
+g2 = ggplot(df_n, aes(sample=RT)) +
+  stat_qq() + stat_qq_line()
+
+g1+g2
+```
+
+- Various transformations exist
+
+- For now we'll apply a logarithmic transformation to RT
+
+```{r, warning = FALSE, message = FALSE}
+df_n = df_n %>%
+  mutate(RT = log(RT))
+
+
+g3 = ggplot(df_n, aes(RT)) + geom_density()
+g4 = ggplot(df_n, aes(sample=RT)) +
+  stat_qq() + stat_qq_line()
+
+
+grid.arrange(g1,g2,g3,g4, layout_matrix = rbind(c(1,2),
+                                                c(3,4)))
+```
+
+## The next important condition is independence of measurements
+
+- Let's look at what the situation is in our data frame
+
+```{r, warning = FALSE, message = FALSE}
+xtabs(~ Participant + Word, data = df_n)
+```
+
+## We do not have independence of measurements!
+
+- We see that every Participant saw every word (and pseudowords too, but we removed that data, hence the zeros for pseudowords)
+
+- This means we do not have independent measurements!
+
+- How is this problem resolved?
+
+## THE TRADITIONAL WAY 
+
+- Running two separate analyses
+
+- Averaging the DV values across all words for individual Participants, 
+  running a by-Participant analysis (the so-called F1 test)
+  in which Participants are treated as a source of random effects
+
+- Averaging the DV values across all Participants for individual words (the so-called F2 test)
+
+## Let's start by doing that
+
+- To compute averages by word, we use the summarise() function
+  - The first argument is the name of the new variable
+  - The second argument is the action we're applying
+  - The third argument is the variable we want to average
+
+```{r, warning = FALSE, message = FALSE}
+nouns = df_n %>%
+  group_by(Word) %>%
+  summarise(MeanRT = mean(RT, na.rm = TRUE))
+```
+
+- Now let's take the columns we need from the large data frame
+
+```{r, warning = FALSE, message = FALSE}
+nouns_by_item = df_n %>%
+  select(Word, Length, Freq_z, FreCategory, NoS_z, PolyLevelCategory, PartSpeed)
+```
+
+- Then let's get rid of all the repeated rows, keeping only one row per word
+
+```{r, warning = FALSE, message = FALSE}
+nouns_by_item = nouns_by_item %>% distinct()
+```
+
+- Finally, let's join the two new data frames, using the Word column as the key for joining
+  
+```{r, warning = FALSE, message = FALSE}
+nouns_by_item = nouns_by_item %>%
+  left_join(nouns, by = "Word")
+```
+
+## Now we have a data frame with average reaction times for words
+
+```{r, warning = FALSE, message = FALSE}
+head(nouns_by_item)
+```
+
+## INTERPRETING COEFFICIENTS IN A LINEAR MODEL
+
+- Given that the interpretation of coefficients for fixed effects is identical in lm and lmer,
+  and that it can be complicated, we'll deal with it first
+
+## THE CASE OF A SINGLE CONTINUOUS PREDICTOR
+
+- Let's look at the relationship between word frequency and recognition time:
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(nouns_by_item, aes(x=Freq_z, y=MeanRT)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE)
+```
+
+## Every linear model consists of
+
+- Something we understand, something we know about (predictors), and something we don't understand, something we know nothing about (error)
+  - DV ~ IV + error
+
+- For the part we understand (the effect of the predictor), the model computes an intercept and a slope, and what we don't understand becomes the residuals: 
+  - DV ~ Intercept    +    slope * IV     +   residual
+
+- To build a linear model in R, we use this notation:
+
+```{r, warning = FALSE, message = FALSE}
+lm1 = lm(MeanRT ~ Freq_z, data = nouns_by_item)
+```
+
+## We've built an object that contains various pieces of information
+
+- We get what we need using the summary() command
+
+```{r, warning = FALSE, message = FALSE}
+summary(lm1)
+```
+
+## The lm1 object (among other things) contains the coefficients: intercept and slope
+
+- To get just the coefficients:
+
+```{r, warning = FALSE, message = FALSE}
+coef(lm1)
+```
+
+- This output gives us the coefficients we need, so the equation above could be written as:
+
+      MeanRT = 6.45842 * Intercept - 0.02390782 * Freq_z + residual
+
+- The intercept tells us the reaction time for Freq_z = 0 
+- Since a frequency of zero doesn't make sense, we centered the data so that the intercept would be interpretable.
+- So the intercept tells us the time it takes to recognize a word that has the average frequency (of the words in the experiment).
+
+- The slope tells us how much the reaction time changes when we move one unit along the x-axis.
+
+## An important element of a linear model is the so-called model matrix
+
+```{r, warning = FALSE, message = FALSE}
+head(model.matrix(lm1), n=10)
+```
+
+- The prediction for each word is calculated by applying the equation:
+
+      MeanRT (first row, i.e. first word) = 6.45842 * 1 - 0.02553 * (-0.52362420) + residual
+      MeanRT (second row, i.e. second word) = 6.45842 * 1 - 0.02553 * (-0.45384925) + residual
+
+```{r, warning = FALSE, message = FALSE}
+model.matrix(lm1)
+```
+
+## THE CASE OF A SINGLE CATEGORICAL PREDICTOR
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(nouns_by_item, aes(x=PolyLevelCategory, y=MeanRT)) + 
+  scale_x_discrete(limits=c("lowPolys", "mediumPolys", "highPolys")) +
+  coord_cartesian(ylim = c(6.2, 6.6)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge") + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", position =    position_dodge(width = 0.90), width = 0.2) 
+```
+
+## Let's build a linear model:
+
+```{r, warning = FALSE, message = FALSE}
+lm2 = lm(MeanRT ~ PolyLevelCategory, data = nouns_by_item)
+
+summary(lm2)
+```
+
+## The relationship between category averages and coefficients
+
+- Let's compute the averages for the three categories of the PolyLevelCategory (Polysemy) variable
+
+```{r, warning = FALSE, message = FALSE}
+tapply(nouns_by_item$MeanRT, nouns_by_item$PolyLevelCategory, mean)
+```
+
+- Let's look at just the coefficients:
+
+```{r, warning = FALSE, message = FALSE}
+coef(lm2)
+```
+
+- The intercept actually represents the average for the high polysemy group.
+
+- The coefficient for low polysemy tells us by how much we need to increase the intercept value to get the average for the low polysemy group.
+
+## We can verify this
+
+- coefficients
+```{r, warning = FALSE, message = FALSE}
+coef(lm2)
+```
+
+- group averages
+```{r, warning = FALSE, message = FALSE}
+lowPolys = mean(nouns_by_item[nouns_by_item$PolyLevelCategory=="lowPolys",]$MeanRT)
+
+mediumPolys = mean(nouns_by_item[nouns_by_item$PolyLevelCategory=="mediumPolys",]$MeanRT)
+
+highPolys = mean(nouns_by_item[nouns_by_item$PolyLevelCategory=="highPolys",]$MeanRT)
+```
+
+```{r, warning = FALSE, message = FALSE}
+## to get the first coefficient
+lowPolys - highPolys 
+## to get the second coefficient
+mediumPolys - highPolys 
+```
+
+- i.e.:
+```{r, warning = FALSE, message = FALSE}
+## to get the average for low polysemy
+highPolys + 0.03216490 
+## to get the average for low polysemy
+highPolys + 0.01278375
+```
+
+## R's default coding is so-called treatment coding, or dummy coding
+
+- This coding means that the first level of the variable is assigned the value 0, which maps this level onto the intercept.
+
+- The next level gets the value 1
+  
+      + More precisely, for each new level of a categorical variable, a new variable is created
+        that has the value 1 at that level and zero everywhere else.
+
+
+- In this case, high polysemy was assigned the first level, because it comes first alphabetically
+
+```{r, warning = FALSE, message = FALSE}
+head(model.matrix(lm2), n=10)
+
+model.matrix(lm2)
+
+contrasts(nouns_by_item$PolyLevelCategory)
+```
+
+## If we want to map the intercept onto a different level, we use relevel
+
+```{r, warning = FALSE, message = FALSE}
+nouns_by_item$PolyLevelCategory <- relevel(nouns_by_item$PolyLevelCategory, 
+                                           ref = "mediumPolys")
+```
+
+- and then refit the model
+
+```{r, warning = FALSE, message = FALSE}
+lm2a = lm(MeanRT ~ PolyLevelCategory, data = nouns_by_item)
+coef(lm2a)
+```
+
+- now the intercept is mapped onto medium polysemy and equals the average for this group of words
+
+- we get the average for the high polysemy group by adding the coefficient for high polysemy to the intercept value
+  
+```{r, warning = FALSE, message = FALSE}
+6.45247105 -0.01278375
+```
+
+- we get the average for the low polysemy group by adding the coefficient for low polysemy to the intercept value
+
+```{r, warning = FALSE, message = FALSE}
+6.45247105 + 0.01938116
+```
+
+
+
+- for anyone who doesn't believe it, you can compare:
+```{r, warning = FALSE, message = FALSE}
+tapply(nouns_by_item$MeanRT, nouns_by_item$PolyLevelCategory, mean)
+```
+
+## Let's summarize the meaning of the intercept and the slope:
+
+- The intercept is always mapped onto the zero level for all predictors.
+  
+- If it's a continuous predictor, that's the value zero
+  
+      + in that case it's best to center the data at zero, 
+        so that the intercept value is interpretable, i.e.
+        so that it represents the DV level at the average of all the predictors,
+        since the true zero value of a predictor is often not meaningful in itself;
+
+      + The slope then represents how much the value on the y-axis changes
+        when we move by 1 on the x-axis
+      
+- If it's a categorical predictor, then the intercept represents the level 
+  that is mapped onto zero
+
+      + The slope then also represents how much the value on the y-axis changes
+        if we move by 1 on the x-axis,
+        except now a move of 1 on the x-axis corresponds to a change of category.
+
+- This is how general linear models make it possible to reduce
+  categorical and numeric predictors to the same underlying principle.
+
+## THE CASE OF ONE CATEGORICAL AND ONE CONTINUOUS PREDICTOR
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(nouns_by_item, aes(x = Freq_z, y = MeanRT, colour = PolyLevelCategory)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE)
+```
+
+## MODEL WITHOUT INTERACTION
+
+```{r, warning = FALSE, message = FALSE}
+lm3 = lm(MeanRT ~ PolyLevelCategory + Freq_z, data = nouns_by_item)
+
+summary(lm3)
+```
+
+## The intercept is again mapped onto the zero levels of both predictors
+ 
+- Which means PolyLevelCategory = 0 (i.e. "mediumPolys"/"medium") and Freq_z = 0
+ 
+- Each subsequent coefficient shows us what happens to the DV when we move
+ one step along the x-axis in terms of the corresponding predictor
+
+
+Coefficients      |  Estimate
+----------------- | -----------
+(Intercept)       |  6.452580  
+PolyLevelCategoryhighPolys  |  -0.017080 
+PolyLevelCategorylowPolys | 0.023539   
+Freq_z             | -0.026081  
+
+
+- Regression line equation for the medium polysemy level: 
+          
+          + MeanRT ~ 6.452580 - 0.026081 * Freq_z
+
+- Regression line equation for the high polysemy level: 
+    
+          + MeanRT ~ 6.452580 - 0.017080 -0.026081 * Freq_z
+
+- Regression line equation for the low polysemy level:
+
+          + MeanRT ~ 6.452580 + 0.023539 - 0.026081 * Freq_z
+
+
+## MODEL WITH INTERACTION
+
+```{r, warning = FALSE, message = FALSE}
+lm4 = lm(MeanRT ~ PolyLevelCategory * Freq_z, data = nouns_by_item)
+
+summary(lm4)
+```
+
+## Interpreting the coefficients
+
+- In this particular case the interaction is not statistically significant, i.e. there is no need to correct the slope of the Freq_z effect for different levels of the PolyLevelCategory variable
+
+- Still, for didactic purposes, we'll go through the calculation as if it were.
+
+Coefficients                        |  Estimate  |
+----------------------------------- | ---------- | --------------------------------------------------
+(Intercept)                         |  6.452608  | zero levels of all predictors
+PolyLevelCategoryhighPolys          | -0.016785  | difference between mediumPolys and highPolys when Freq_z=0
+PolyLevelCategorylowPolys           |  0.022182  | difference between mediumPolys and lowPolys when Freq_z=0
+Freq_z                              | -0.032942  | slope of the Freq_z effect when PolyLevelCategory=0 (mediumPolys)
+PolyLevelCategoryhighPolys:Freq_z   |  0.008873  | correction to the Freq_z slope for PolyLevelCategory highPolys
+PolyLevelCategorylowPolys:Freq_z    |  0.014983  | correction to the Freq_z slope for PolyLevelCategory lowPolys
+
+ 
+ 
+- Regression line equation for the mediumPolys level:
+          
+          + MeanRT = 6.452608 - 0.032942 * Freq_z
+
+- Regression line equation for the highPolys level:
+          
+          + MeanRT = (6.452608 - 0.016785) + (-0.032942 + 0.008873) * Freq_z
+
+- Regression line equation for the Polysemy "lowPolys" ("low") level:
+          
+          + MeanRT = (6.452608 + 0.022182) + (-0.032942 + 0.014983) * Freq_z
+
+
+## THE CASE OF AN INTERACTION BETWEEN TWO CATEGORICAL PREDICTORS
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(nouns_by_item, aes(x=FreCategory, y=MeanRT, fill=PolyLevelCategory)) + 
+  coord_cartesian(ylim = c(6.2, 6.6)) +
+  stat_summary(fun = mean, geom = "bar", position = "dodge") + 
+  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", position = position_dodge(width = 0.90), width = 0.2) 
+```
+
+## LET'S BUILD THE MODEL
+
+```{r, warning = FALSE, message = FALSE}
+lm5 = lm(MeanRT ~ PolyLevelCategory * FreCategory, data = nouns_by_item)
+
+summary(lm5)
+```
+
+## INTERPRETING THE COEFFICIENTS
+
+Coefficients                |  Estimate   |  
+--------------------------- | ----------- | ---------------------------------------------
+(Intercept)                                 | 6.425396 |  zero level of all predictors (mediumPolys, HighFr)
+PolyLevelCategoryhighPolys                  |-0.020544 |  difference between mediumPolys_HighFr and highPolys_HighwFr
+PolyLevelCategorylowPolys                   | 0.042138 |  difference between mediumPolys_HighFr and lowPolys_HighwFr
+FreCategoryLowFr                            | 0.050694 |  difference between mediumPolys_HihgFr and mediumPolys_lowFr
+PolyLevelCategoryhighPolys:FreCategoryLowFr | 0.011779 |  additional correction for highPolys_LowFr beyond the difference between mediumPolys_HighFr and highPolys_HighwFr and the difference between mediumPolys_HihgFr and mediumPolys_lowFr   
+PolyLevelCategorylowPolys:FreCategoryLowFr  |-0.039086 |  additional correction for lowPolys_LowFr beyond the difference between mediumPolys_HighFr and lowPolys_HighwFr and the difference between mediumPolys_HihgFr and mediumPolys_lowFr   
+
+- How we compute the group averages from the coefficients:
+
+Group          | Average based on the coefficients
+-------------- | -------------------------------------------------------
+medium, HF:    | 6.425396
+high, HF:      | 6.425396 - 0.020544 = 6.404852
+low, HF:       | 6.425396 + 0.042138 = 6.467534
+medium, LF:    | 6.425396 + 0.050694 = 6.47609
+high, LF:      | 6.425396 - 0.020544 + 0.050694 + 0.011779 = 6.467325
+low, LF:       | 6.425396 + 0.042138 + 0.050694 - 0.039086 = 6.479142
+
+memdium = mediumPolys, low = lowPolys, high = highPolys
+LF = low frequency, HF = high frequency 
+
+- Let's check the calculation:
+
+```{r, warning = FALSE, message = FALSE}
+with(nouns_by_item, tapply(MeanRT, list(PolyLevelCategory, FreCategory), mean))
+```
+
+## THE CASE OF AN INTERACTION BETWEEN TWO CONTINUOUS PREDICTORS
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(nouns_by_item, aes(x=NoS_z, y=MeanRT, colour = Freq_z)) + 
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE)
+```
+
+## LET'S BUILD THE MODEL
+
+```{r, warning = FALSE, message = FALSE}
+lm6 = lm(MeanRT ~ NoS_z * Freq_z, data = nouns_by_item)
+
+summary(lm6)
+```
+
+## INTERPRETING THE COEFFICIENTS
+
+Coefficients | Estimate    |  
+------------ | ----------- | -----------------------------------------------------------
+(Intercept)  |  6.454012   | RT when NoS_z = 0 and Freq_z = 0 (both mapped onto the average)
+NoS_z        | -0.016357   | slope for NoS_z when Freq_z = 0
+Freq_z       | -0.025088   | slope for Freq_z when NoS_z = 0
+NoS_z:Freq_z | -0.002804   | how much the NoS_z slope needs to be corrected if we move one unit along the Freq_z scale, i.e. how much the Freq_z slope needs to be corrected if we move one unit along the NoS_z scale.
+
+- THE EASIEST WAY TO SEE WHAT'S HAPPENING IS TO PLOT AN INTERACTION LIKE THIS (if it's significant)
+
+```{r, warning = FALSE, message = FALSE}
+nouns_by_item$seckano <- cut_interval(nouns_by_item$NoS_z, 3)
+
+ggplot(nouns_by_item, aes(Freq_z, MeanRT, colour=seckano)) +
+  geom_point(alpha=0.3) +
+  scale_colour_discrete(name  ="NoS_z split", labels=c("Low", "Average", "High"))+	
+  xlab("Frequency") + ylab("RT (ms)") +
+  theme(axis.text=element_text(size=18),axis.title=element_text(size=20))+
+  stat_smooth(method = lm, formula = y ~ x, size = 1.5)
+```
+
+
+## THAT'S ENOUGH ABOUT COEFFICIENTS, LETS GO BACK TO MIXED EFFECTS
+
+- In the next session: random effects
+
+## Thank you!

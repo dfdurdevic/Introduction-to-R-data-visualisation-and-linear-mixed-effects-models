@@ -1,0 +1,1215 @@
+---
+title: 'Day 2, Session 2: Linear Mixed Effects Regression - Random Effects'
+author: 'Dusica Filipovic Durdevic'
+date: '2026-09-15'
+output:
+  revealjs::revealjs_presentation:
+    theme: simple
+    highlight: pygments
+    transition: none
+    center: false
+    css: custom.css
+    slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## Why is it important to analyze both participants and words (items) at the same time?
+
+- We sampled from two populations to which we want to generalize our findings:
+      
+  - From the population of speakers of the given language
+  
+  - From the population of words of the given language
+    - Or other type of stimuli
+      
+- We want our results to generalize to population of speakers and population of words
+  - i.e. we want them to hold not only for the set of stimuli/speakers included in the experiment, but to hold for all speakers and all words.
+ 
+- To be able to do this, we need to treat speakers and words as sources of so-called random effects.
+
+
+## What is the difference between fixed and random effects?
+
+Fixed effects
+
+- Effects of variables whose (all existing?) levels we have included in the design in a way that is "repeatable"     - i.e. so that we can assign new cases (new measurements) to those same levels again.
+  
+
+Random effects
+
+- Effects of categorical variables whose levels are randomly sampled from a population 
+ 
+  - We did not cover all existing levels
+ 
+  - We cannot find new cases that would "fill in" that category
+    - there are no two identical words, no two identical participants
+
+    - E.g. we sampled a certain number of Participants from the population of speakers of some language, or a certain number of words from the population of words of some language, etc.
+
+    - We want to generalize our fixed effects to all members of the given population,
+    - not just establish their existence in the chosen sample.
+
+## What is the difference between fixed and random effects?
+
+- Fixed effects
+
+  - Effects of variables whose (all existing?) levels we have included in the design in a way that is "repeatable"     - i.e. so that we can assign new cases (new measurements) to those same levels again.
+  
+
+- Random effects
+
+  - Effects of categorical variables whose levels are randomly sampled from a population 
+ 
+      - We did not cover all existing levels
+ 
+      - We cannot find new cases that would "fill in" that category
+        - there are no two identical words, no two identical participants
+
+        - E.g. we sampled a certain number of Participants from the population of speakers of some language, or a certain number of words from the population of words of some language, etc.
+
+      - We want to generalize our fixed effects to all members of the given population,
+        - not just establish their existence in the chosen sample.
+
+## Modeling random effects
+
+- Random effects are modeled as random variables 
+
+  - whose arithmetic mean is equal to zero (M=0), 
+ 
+  - and whose standard deviation is unknown (SD=?)
+
+    - For example, individual participants' speeds differ, 
+    - and on average zero is added to adjust the arithmetic mean for an individual participant.
+    - However, a specific participant is not assigned zero!
+
+- The SD of the random effects is a parameter that is estimated
+
+  - We are interested in the variation around the fixed effect estimate
+
+## Let's go back to the data
+
+- Start by repeating all the preparation
+```{r, warning = FALSE, message = FALSE}
+# To start, let's load the packages we need
+library(lme4) # to build models
+library(lmerTest) # so that p-values are displayed
+library(ggplot2) # for plots
+library(gridExtra) # for arranging multiple plots
+library(patchwork) # for arranging multiple plots
+require(see) # for plotting model parameters
+library(languageR) # for various things
+library(lattice) # for plots
+library(parameters) # for plotting model parameters
+library(dplyr) # for data wrangling
+
+# And let's load a data frame and prepare the variables in one pipeline
+
+df_n = read.table("Dusica.nouns.2004.txt", sep = "\t", header = TRUE) %>%
+  mutate(
+    Participant       = as.factor(Participant),
+    Lexicality        = as.factor(Lexicality),
+    PolyLevelCategory = as.factor(PolyLevelCategory),
+    Word              = as.factor(Word)
+  ) %>%
+  group_by(Participant) %>%
+  mutate(PartAcc = mean(Accuracy, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(PartAcc >= 0.75) %>%
+  group_by(Word) %>%
+  mutate(ItemAcc = mean(Accuracy, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(ItemAcc >= 0.75) %>%
+  filter(Lexicality == "word", Error_code == "C") %>%
+  filter(RT > 0) %>%
+  mutate(
+    Freq    = log(as.numeric(Frequency)),
+    logFreq = Freq,
+    Freq_z  = as.numeric(scale(Freq)),
+    NoS     = as.numeric(NoS),
+    NoS_z   = as.numeric(scale(NoS)),
+    RT      = log(RT)
+  )
+
+dim(df_n)
+head(df_n)
+str(df_n)
+
+```
+
+## Random intercept
+
+## Random intercept
+
+- To start, even if we knew nothing about the study design, we know that individual participants differ in reaction speed
+
+- Let's see what individual participants' average reaction times look like
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x= Participant, y=RT)) + 
+  geom_boxplot()
+```
+
+## Let's build a model that tells R we expect a different intercept for each Participant
+
+- i.e. we expect participants to differ from one another in overall reaction speed
+
+- Since we did not test all speakers of Serbian, and additionally, since we want to generalize our findings to the entire population of Serbian speakers, we cannot treat Participants as fixed effects, but rather as random
+
+- That model looks like this
+
+```{r, warning = FALSE, message = FALSE}
+lmer1 = lmer( RT ~ 1 + (1|Participant), data = df_n)
+```
+
+## Besides expecting participants to differ in speed, we also expect that reaction time will not be the same for all words
+
+- Let's see what the average reaction times for individual words look like
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x= Word, y=RT)) + 
+  geom_boxplot()
+```
+
+## Let's build a model that tells R we expect a different intercept for each word,
+
+- I.e. we expect words to differ from one another in how quickly people react to them
+
+- Since we did not present all words of Serbian, and additionally,
+ since we want to generalize our findings to the entire population of words in our language,
+ we cannot treat words as fixed effects either, but rather as random
+ 
+- That model looks like this
+
+```{r, warning = FALSE, message = FALSE}
+lmer2 = lmer( RT ~ 1 + (1|Word), data = df_n)
+```
+
+## We can build a model that simultaneously tells R we expect both differences among participants and differences among words
+
+- This is one of the important advantages of mixed-effects analysis, since it very elegantly resolves various situations of interdependence in measurements (repeated measures, Latin square...)
+
+```{r, warning = FALSE, message = FALSE}
+lmer3 = lmer( RT ~ 1 + (1|Participant) + (1|Word), data = df_n)
+```
+
+## We can also check whether it is justified to include each of these two random effects
+
+- To do this, we first build models based on ML instead of REML to allow comparison
+```{r, warning = FALSE, message = FALSE}
+lmer1a = update(lmer1, REML = FALSE)
+lmer2a = update(lmer2, REML = FALSE)
+lmer3a = update(lmer3, REML = FALSE)
+```
+
+- Let's compare the model that contains only participants and the model that contains both participants and words
+  - Is it justified to include words as a random effect
+    
+```{r, warning = FALSE, message = FALSE}
+anova(lmer1a, lmer3a)
+```
+  - yes, it is justified
+
+- The logic of comparisson
+
+  - The model with more parameters will have a better fit
+  
+  - However, the perfect fit (no residual variance) would have zero potential for generalization
+  
+  - We need a compromise between the goodness of fit and number of parameters
+  
+    - We need only the parameters justified by the data
+    
+  - How do we know if that compromise is achieved?
+  
+    - AIC (Akaike Information Criterion)
+      - The smaller the better
+      
+    - BIC (Bayesian Information Criterion)
+      - The smaller the better
+      
+    - LogLikelihood
+      - The larger the better
+      
+      
+- Let's compare the model that contains only words and the model that contains both participants and words
+  - Is it justified to include participants as a random effect
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer2a, lmer3a)
+```
+  - yes, it is justified
+
+- The model with both sources of random effects is justified 
+  - both by the design (two sources of dependency in the measurements: participants and words)
+  - and by the data
+
+## Including additional effects in the model
+
+- At the moment we only have the intercept, we continue by including additional effects
+
+> Caution
+
+> For each predictor, we estimate two effects: fixed and random
+
+> Fixed effect - at the level of group
+
+> Random effect - at the level of the group member (deviation from the group effect; fluctuation around the group effect)
+
+
+## Random slope
+
+## Random slope
+
+- Including frequency as the predictor
+
+  - The fixed effect Freq_z is clear 
+    - Identical to lm() effects
+  
+  - How do we interpret the Freq_z in the random structure?
+  
+    - Besides telling the model to expect different average reaction times from different participants and for different words, we can also ask whether some fixed effect is really the same for all participants and/or all the words.
+  
+- Let's see what the effect of frequency looks like separately for each participant
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x=Freq_z, y=RT)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~Participant) 
+```
+
+## We can instruct the model to expect a different effect of frequency for different participants
+
+- That model looks like this
+
+  - Fixed effect of frequency (group level)
+  
+  - Random effect of frequency per participant
+  
+    - As frequency is not repeated across words, i.e. a given word always has the same frequency, calculating random slope for the effect of frequency per word would be meaningless, i.e. it would not be justified by the design.
+
+```{r, warning = FALSE, message = FALSE}
+lmer4 = lmer( RT ~ Freq_z + (1 + Freq_z|Participant) + (1|Word), data = df_n)
+```
+
+- We can check whether this is justified by the data
+
+  - RePsychLing package, but also built in the lme4 package (has been for some time)
+    
+  - Key idea
+  - How many dimensions do we need to describe the co-variance matrix of the random effects?
+  - Is the number of dimensions (principal components) smaller that the number of parameters that need to be estimated?
+    - No --> ok
+    - Yes --> we are asking for more than our data can provide
+      - Risk of convergence failure, singular fit, unreliable estimates
+
+```{r, warning = FALSE, message = FALSE}
+summary(rePCA(lmer4))
+```
+- We can see that the model is overparameterized in by-participant section
+
+  - Cumulative proportion of vaiance is 1 on the first PC, the proportion of variance accounted by the second PC is zero
+
+- Let's check the convergence and singularity
+  
+```{r, warning = FALSE, message = FALSE}
+performance::check_convergence(lmer4)
+isSingular(lmer4)
+
+```
+
+- The model did converge, but there is singularity (one of the components is close to zero, or the correlation within random effects is close to +/-1)
+
+- We need to simplify the structure of random effects
+
+- rePCA informed us that we need to remove one parameter
+
+- The parameter to be removed is the one with the smallest variance
+
+- How do we know which one it is?
+
+- We inspect the values of estimated parameters for the random effects
+  - Remember: their M=0, their SD is being estimated in the model
+  
+- To inspect the standard deviation of the random effects:
+  
+```{r, warning = FALSE, message = FALSE}
+VarCorr(lmer4)
+```
+- Inspecting the structure of random effects
+  - By word
+    - Intercept
+  - By participant
+    - Intercept
+    - Random slope for the effect of frequency
+    - Correlation between the by-participant intercept and by-participant random slope for frequency
+    
+- When we look at the structure of the by-participant random effects, we notice two things:
+    
+  -  The variation in the frequency slope is much smaller than the variation in the intercept for participants or words
+    
+  - The correlation between the Participant intercept and the frequency effect slope equals -1, meaning that Participants who were slower were also more sensitive to frequency at the same time. However, a correlation this high is often a sign that we have included unnecessary parameters in the model, which is also suggested by rePCA.
+
+- Let's look at the correlation between the Participant intercept and the by-Participant slope:
+```{r, warning = FALSE, message = FALSE}
+plot(ranef(lmer4)$Participant)
+```
+
+- Before excluding any of the by-participant effects, we remove the correlation
+
+```{r, warning = FALSE, message = FALSE}
+# Alternative way: lmer5 = lmer( RT ~ Freq_z + (1 + Freq_z||Participant) + (1|Word), data = df_n)
+# I prefer:
+lmer5 = lmer( RT ~ Freq_z + (1|Participant) + (0 + Freq_z|Participant) + (1|Word), data = df_n)
+```
+
+- Repeat the diagnostics
+
+```{r, warning = FALSE, message = FALSE}
+performance::check_convergence(lmer5)
+isSingular(lmer5)
+summary(rePCA(lmer5))
+```
+
+- Still singularity issues, still one unjustified parameter
+
+- Inspect the SD again, looking for SD of by-participant random effects
+
+```{r, warning = FALSE, message = FALSE}
+VarCorr(lmer5)
+```
+
+- By-participant random slope for the effect of frequency has SD close to zero.
+
+- We have to remove it.
+
+```{r, warning = FALSE, message = FALSE}
+lmer6 = lmer( RT ~ Freq_z + (1|Participant) + (1|Word), data = df_n)
+```
+
+- Repeat the diagnostics
+
+```{r, warning = FALSE, message = FALSE}
+performance::check_convergence(lmer6)
+isSingular(lmer6)
+summary(rePCA(lmer6))
+```
+
+- No issues here!
+
+- Let's compare the two models to see if we lost something by excluding this parameter
+
+  - To do that, we first refit the models using Maximum Likelihood method instead of Restricted Maximum Likelihood
+
+```{r, warning = FALSE, message = FALSE}
+lmer4a = update(lmer4, REML = FALSE)
+lmer6a = update(lmer6, REML = FALSE)
+```
+
+- The logic of comparison (repeated)
+
+  - The model with more parameters will have a better fit
+  
+  - However, the perfect fit (no residual variance) would have zero potential for generalization
+  
+  - We need a compromise between the goodness of fit and number of parameters
+  
+    - We need only the parameters justified by the data
+    
+  - How do we know if that compromise is achieved?
+  
+    - AIC (Akaike Information Criterion)
+      - The smaller the better
+      
+    - BIC (Bayesian Information Criterion)
+      - The smaller the better
+      
+    - LogLikelihood
+      - The larger the better
+      
+```{r, warning = FALSE, message = FALSE}
+anova(lmer4a, lmer6a)
+```
+
+- The model with more parameters actually does have smaller AIC/BIC and larger LogLik, but the difference is not large enough to justify the complication (inclusion of two extra parameters)
+
+- Actually, the random slope is not needed here
+
+- We choose the simpler model (as it performs equally well as the more complex model)
+
+> Fun fact
+
+> There is a viewpoint according to which the by-Participant variation in the frequency slope should be kept in the model, since it is justified by the design (even if it is not justified by the data), and it contributes to resolving the problem of dependent measurements.
+
+> How to prevent reviewer 2 complaints
+
+> State that you started from the model which included maximum structure of the random effects justified by the design (Barr et al., 2013), but the model failed to converge and/or had singularity issues. Then you simplified this structure by removing the correlation, followed by removing random effects with least variance, until the model converged without singularity (Bates et al., 2015; Matuschek et al., 2017). Cite RePsychLing package, it was a life saver at the time :)
+
+
+## For fixed effects we should also check whether a non-linear component exists
+
+```{r, warning = FALSE, message = FALSE}
+lmer7 = lmer( RT ~ poly(Freq_z,2) + (1|Participant) + (1|Word), data = df_n)
+
+
+lmer7 = update(lmer7, REML = FALSE)
+anova(lmer6, lmer7)
+```
+- We see that this, too, is not justified by the data
+  - The model with the non-linear effect even has a slightly worse fit
+
+
+## Does adding frequency as a fixed effect make the model describe the data better?
+
+  - Is it justified by the data, or does it needlessly complicate the model?
+  
+  - Remember - uncontrolled addition of predictors can lead to so-called overfitting!
+ 
+```{r, warning = FALSE, message = FALSE}
+anova(lmer3a, lmer6a)
+```
+
+  - We see that including frequency is justified
+    - The model that contains it has a lower AIC, lower BIC, and higher log-likelihood
+
+- Only once we've established that adding the predictor makes the model justifiably better do we look at the model's coefficients
+
+```{r, warning = FALSE, message = FALSE}
+summary(lmer6a)
+```
+
+
+What do we see when we display a model summary? Line-byline:
+
+- The first lines give basic information about the algorithm, the formula we applied, and the data
+
+- Then we get the REML (Restricted Maximum Likelihood) convergence criterion
+  - Which can serve as a goodness-of-fit index, and also for comparing models
+
+- We get basic information about the distribution of the residuals
+  - For now it appears symmetric; we will check this further later
+
+- We arrive at the part of the output showing the parameters for the random effects
+  - We said that for these, variance/standard deviation is estimated
+ 
+- We see the estimate for the random intercept for words, the estimate for the random intercept for participants, and the residual
+  - The residual is what we referred to as the error in an ordinary linear model (the part whose structure we don't understand)
+    - We could also say that we split the error from lm into a part whose structure we do understand (different average speeds of participants and words) and a part whose structure we don't understand (the error)
+
+- Finally, the coefficients for the fixed effects are shown.
+ 
+- We have one continuous predictor.
+  - In this case, the intercept tells us the value of the DV when the value of the IV equals zero. For this to be meaningful, we centered the predictor at zero, which means zero now represents the average frequency, so we get the value of the DV (i.e. RT) for the average value of the IV (i.e. frequency).
+
+```{r, warning = FALSE, message = FALSE}
+RT_intercept = exp(6.457011)
+# predicted RT (ms) at Freq_z = 0 (reference level)
+RT_intercept
+```
+
+  - The second coefficient refers to the predictor and tells us how much the value of the DV changes when the value of the IV increases by one. We see that an increase in frequency by one point on the scale is accompanied by a shortening of reaction time of 0.029, and that this change is statistically significant
+
+```{r, warning = FALSE, message = FALSE}
+RT_F1sd = exp(6.457011 - 0.024169)   
+# predicted RT (ms) at Freq_z = 1 (one SD above mean frequency)
+RT_intercept - RT_F1sd
+```
+
+## We can obtain a display of the partial fixed effect of a predictor
+
+- Separate plot for the effect of each predictor, controlling for other effects in the model
+
+  - Using a function from the languageR package
+    
+```{r, warning = FALSE, message = FALSE}
+plotLMER.fnc(lmer6a)
+```
+
+- Using a more recent package
+
+```{r, warning = FALSE, message = FALSE}
+library(effects)
+plot(allEffects(lmer6a))
+```
+
+## How do we arrive at the model's prediction for a given participant for a given word?
+
+- Recall, the model is a single object with various characteristics, from which we can extract various pieces of information
+
+- This is how we retrieve the values of the fixed coefficients (i.e. the coefficients for the fixed effects)
+```{r, warning = FALSE, message = FALSE}
+fixef(lmer6a)
+```
+
+- This is how we retrieve the value of the random coefficients 
+
+  - Also called BLUPs (Best Linear Unbiased Predictors)
+    
+```{r, warning = FALSE, message = FALSE}
+ranef(lmer4)
+```
+
+## To get the values by which the intercept should be adjusted for each participant:
+
+```{r, warning = FALSE, message = FALSE}
+ranef(lmer6a)$Participant
+```
+
+## To get the values by which the intercept should be adjusted for each word:
+
+```{r, warning = FALSE, message = FALSE}
+ranef(lmer6a)$Word
+```
+
+## We can also display them graphically
+
+```{r, warning = FALSE, message = FALSE}
+print(dotplot(ranef(lmer6a, condVar = TRUE))$Participant)	
+print(dotplot(ranef(lmer6a, condVar = TRUE))$Word)	
+```
+
+- The same thing can also be done like this, to remind you a bit of the first class :)
+```{r, warning = FALSE, message = FALSE}
+print(dotplot(ranef(lmer6a, condVar = TRUE))[[2]])	
+print(dotplot(ranef(lmer6a, condVar = TRUE))[[1]])	
+```
+
+
+## Let's derive a prediction for participant S9 for the word "bell" (ZVONO)
+
+- These are their BLUPs:
+            (Intercept)   Freq_z
+  - s9:     0.12949866    -0.0043679326
+  - ZVONO: -0.0263414774
+
+```{r, warning = FALSE, message = FALSE}
+RT_s9_ZVONO = df_n[df_n$Participant == "s9" & df_n$Word == "ZVONO",]$RT
+RT_s9_ZVONO
+
+Freq_z_ZVONO = df_n[df_n$Participant == "s9" & df_n$Word == "ZVONO",]$Freq_z
+Freq_z_ZVONO
+
+Intercept = fixef(lmer6a)[1]
+Fix.Freq_z = fixef(lmer6a)[2]
+
+Random.int.subj   = ranef(lmer6a)$Participant["s9", "(Intercept)"]
+Random.int.Word   = ranef(lmer6a)$Word["ZVONO", "(Intercept)"]
+
+RT_s9_ZVONO_fitted_ours = Intercept + Fix.Freq_z * Freq_z_ZVONO  + 
+                        Random.int.subj + Random.int.Word
+
+RT_s9_ZVONO_fitted_ours
+
+
+df_n$RT.fitted = fitted(lmer6a)
+
+RT_s9_ZVONO_fitted = df_n[df_n$Participant == "s9" & df_n$Word == "ZVONO",]$RT.fitted
+RT_s9_ZVONO_fitted
+```
+
+## For the model's coefficients, we can estimate 95% confidence intervals
+
+- We see that our effects are always on the same side in relation to zero
+
+```{r, warning = FALSE, message = FALSE}
+confint(lmer6a, method="Wald")
+```
+
+
+## Now we will check whether any of the assumptions for applying a linear model have been violated:
+
+- Create a column with the predicted DV values
+
+```{r, warning = FALSE, message = FALSE}
+df_n$RT.fitted = predict(lmer6a)
+```
+
+- If we're interested in the percentage of variance explained
+
+```{r, warning = FALSE, message = FALSE}
+cor(df_n$RT, df_n$RT.fitted)^2
+```
+
+- Visualizing the correlation between the observed RT and predicted RT (with a red dashed line indicating perfect correlation)
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x=RT.fitted, y=RT)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
+  theme_bw()
+```
+
+## Let's plot the correlation between the fitted values and the residuals
+
+- Create a column with the residuals
+
+```{r, warning = FALSE, message = FALSE}
+df_n$RT.res = residuals(lmer6a)
+```
+
+- Check whether there is homogeneity of variance
+
+- This should look like a nice "egg"
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x=RT.fitted, y=RT.res)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_bw()
+```
+
+## Let's check whether the residuals are normally distributed
+
+- This should be as close as possible to a straight line
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(sample=RT.res)) +
+  stat_qq() + stat_qq_line()+
+  theme_bw()
+```
+
+- The same can also be done like this
+```{r, warning = FALSE, message = FALSE}
+par(mfcol=c(1,2))
+qqnorm(resid(lmer6a))
+plot(fitted(lmer6a), resid(lmer6a))
+par(mfcol=c(1,1))
+```
+
+## Influential points
+
+- Now we'll remove the points with large residuals
+  - To check whether they have too much influence on the model
+      
+- We refit the model on a subset of points whose residuals are within the range of +/-2.5 sigma
+
+- Let's compare the coefficients from the cleaned and the original model
+
+```{r, warning = FALSE, message = FALSE}
+lmer6at = lmer( RT ~ Freq_z + (1|Participant) + (1|Word), 
+              data = df_n, subset=abs(scale(resid(lmer6a)))<2.5, REML = FALSE)
+
+summary(lmer6at)
+```
+
+## Let's repeat the diagnostics:
+
+- We see that the residuals now look much better, and the effects held up even after we got rid of the outliers
+
+```{r, warning = FALSE, message = FALSE}
+par(mfcol=c(1,2))
+qqnorm(resid(lmer6at))
+plot(fitted(lmer6at), resid(lmer6at))
+par(mfcol=c(1,1))
+```
+
+## Let's visualize the final effect of the main variable
+
+- Plot the relation between Freq_z and predicted RT
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x=Freq_z, y=exp(RT.fitted))) + 
+  geom_point() +
+  geom_smooth(method = "loess", se = TRUE) +
+  theme_bw()
+
+
+ggsave("Freq_z_PredRT_lmer6at.jpg", width = 5, height = 5, dpi = 300)
+```
+
+- The same, but with observed and predicted RT overlaid (for comparisson)
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x = Freq_z)) +
+  geom_point(aes(y = RT), alpha = 0.2, colour = "grey40") +
+  geom_point(aes(y = RT.fitted), colour = "steelblue") +
+  geom_smooth(aes(y = RT.fitted), method = "loess", se = TRUE, colour = "darkblue") +
+  ylab("RT") +
+  theme_bw()
+```
+
+- Using a package
+
+```{r, warning = FALSE, message = FALSE}
+library(ggeffects)
+
+pred = ggpredict(lmer6a, terms = "Freq_z")
+plot(pred)
+```
+
+```{r, warning = FALSE, message = FALSE}
+library(sjPlot)
+plot_model(lmer6a, type = "pred", terms = "Freq_z")
+```
+
+```{r, warning = FALSE, message = FALSE}
+library(effects)
+plot(effect("Freq_z", lmer6a))
+# to plot all effects:
+#plot(allEffects(lmer6a))
+```
+
+
+## Let's make a table for the paper
+
+```{r, warning = FALSE, message = FALSE}
+sjPlot::tab_model(lmer6at, show.se = TRUE, show.stat = TRUE, dv.labels = c("RT (ms)"))
+```
+
+## Let's visualize the coefficients
+
+```{r, warning = FALSE, message = FALSE}
+plot(model_parameters(lmer6at))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## In a similar way to how we asked whether there was variation in the frequency effect's slope across participants, we can also ask whether an analogous variation exists across words.
+
+- We can do this for a predictor that is repeated across words.
+
+  - In this case, for that purpose we can use a variable (which I created for demonstration purposes) called PartSpeedCategory (participant speed)
+    
+    - This is a categorical variable created by dividing Participants into two groups (fast, slow) based on the median of the variable PartSpeed, which is the Participant's average reaction time in the experiment
+
+- Let's first look at whether fast participants are faster on all words, and whether they are equally faster on different words:
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(x=PartSpeedCategory, y=RT)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  facet_wrap(~Word) 
+```
+
+## Let's build a model that includes information that we expect differences in the relationship between fast and slow participants across different words
+
+- This is permissible, since every word was seen by both fast and slow participants, i.e. the factor PartSpeedCategory is repeated across words
+
+
+- Let's start anew, building model from scratch
+  - Fixed effects of frequency and participant speed category, and their interaction 
+  - By-participant intercept and by-participant random slope for frequency (as each participant saw all the words)
+  - By-word intercept and by-word random intercept for participant speed category (as word was presented to all participants)
+    - In this design we cannot include the interaction in random effects, as it is not justified by the design (each predictor varies only within on of the random groups - Freq_z varies within a participant, but not within a word; PartSpeedCategory varies within a word, but not within a participant)
+  - Including REML = FALSE, as we know we will be comparing models
+
+```{r, warning = FALSE, message = FALSE}
+lmer7 = lmer( RT ~ Freq_z * PartSpeedCategory + 
+                (1 + Freq_z|Participant) + 
+                (1 + PartSpeedCategory|Word), 
+                data = df_n, REML = FALSE)
+```
+
+- Let’s check the convergence and singularity
+
+```{r, warning = FALSE, message = FALSE}
+performance::check_convergence(lmer7)
+isSingular(lmer7)
+```
+
+- Although the model converged, the var-covar matrix is singular
+
+- Let's inspect the dimensionality of that space
+
+```{r, warning = FALSE, message = FALSE}
+summary(rePCA(lmer7))
+```
+
+- We need to simplify the random structure both by participants and by words
+
+- Let's inspect the var-covar matrix of the random effects to decide on removing
+
+```{r, warning = FALSE, message = FALSE}
+VarCorr(lmer7)
+```
+
+- First remove the correlation
+
+```{r, warning = FALSE, message = FALSE}
+lmer8 = lmer( RT ~ Freq_z * PartSpeedCategory + 
+                (1|Participant) + (0 + Freq_z|Participant) + 
+                (1|Word) + (0 + PartSpeedCategory|Word), 
+                data = df_n, REML = FALSE)
+```
+
+- Inspect the random space again
+
+```{r, warning = FALSE, message = FALSE}
+VarCorr(lmer8)
+```
+
+- Notice that correlation is still there for by-word random effects!
+
+  - This is because PartSpeedCategory is categorical predictor, and the decorrelation strategy here is different
+  
+  - Here, we need to transform the categorical variable to the set of dummy variables
+  
+  - Instead of single categorical predictor with two levels, we will include n-1 dummy variables (n=number of categories)
+  
+    - Why n-1? Because the first level is mapped onto intercept
+
+- Let's transform the categorical predictors into dummy variables
+
+```{r, warning = FALSE, message = FALSE}
+df_n$PartSpeedCat_slow <- as.numeric(df_n$PartSpeedCategory == "slow")
+```
+
+- Let's refit a model using dummy variable
+
+```{r, warning = FALSE, message = FALSE}
+lmer9 = lmer( RT ~ Freq_z * PartSpeedCat_slow + 
+                (1|Participant) + (0 + Freq_z|Participant) +
+                (1|Word) + (0 + PartSpeedCat_slow|Word),
+                data = df_n, REML = FALSE)
+```
+
+- Inspect the random space again
+
+```{r, warning = FALSE, message = FALSE}
+VarCorr(lmer9)
+```
+- Now the correlation is gone!
+
+- We can also plot the SD of random effects
+
+```{r, warning = FALSE, message = FALSE}
+# The output is a list
+class(VarCorr(lmer9))
+# For easier plotting we transform it to a data frame (nice table)
+vc = as.data.frame(VarCorr(lmer9))
+vc
+# and plot the estimated values of random parameters (i.e. their sd)
+ggplot(vc, aes(x = paste(grp, var1, sep = ": "), y = sdcor)) +
+     geom_col(fill = "steelblue") +
+     #coord_flip() +
+     xlab("Random effect term") +
+     ylab("Standard deviation")
+
+```
+
+- Check the convergence and singularity
+
+```{r, warning = FALSE, message = FALSE}
+performance::check_convergence(lmer9)
+isSingular(lmer9)
+```
+
+- Removing the correlation was not enough, singularity is still there
+
+- Back to var-covar matrix to decide what to remove next
+
+  - Recall that we need to remove one by-participant and one by-word parameter
+
+```{r, warning = FALSE, message = FALSE}
+VarCorr(lmer9)
+```
+
+- The smallest SD is with:
+  - By-word random slope for PartSpeedCat_slow
+  - By-participant random slope for Frequ_z
+
+> Caution
+
+> This is a simple example for pedagogical purposes. IRL, we would not have a choice, as random intercepts should not be removed lightly, especially when dealing with between subject/item design!
+
+- Let's refit a model excluding the two unjustified random parameters
+
+```{r, warning = FALSE, message = FALSE}
+lmer10 = lmer( RT ~ Freq_z * PartSpeedCat_slow + 
+                (1|Participant) + 
+                (1|Word),
+                data = df_n, REML = FALSE)
+```
+
+- Check the convergence and singularity
+
+```{r, warning = FALSE, message = FALSE}
+performance::check_convergence(lmer10)
+isSingular(lmer10)
+```
+
+- Looks fine!
+
+- Inspect the dimensionality of the space
+
+```{r, warning = FALSE, message = FALSE}
+summary(rePCA(lmer10))
+```
+
+- Inspect var-covar matrix
+
+```{r, warning = FALSE, message = FALSE}
+VarCorr(lmer10)
+```
+
+- Now we have a reasonable variation of each random effect
+
+## At this point, we turn to inspecting the structure of fixed effects (as now we can trust the estimates)
+
+- The starting model 
+
+```{r, warning = FALSE, message = FALSE}
+lmer10 = lmer( RT ~ Freq_z * PartSpeedCat_slow + 
+                (1|Participant) + 
+                (1|Word),
+                data = df_n, REML = FALSE)
+```
+
+## Is the interaction justified by the data?
+
+- Does it accounts for statistically significant proportion of variance, compared to model with only main effects of the two predictors?
+  
+- We build a model without the interaction
+
+```{r, warning = FALSE, message = FALSE}
+lmer11 = lmer( RT ~ Freq_z + PartSpeedCat_slow + 
+                (1|Participant) + 
+                (1|Word),
+                data = df_n, REML = FALSE)
+```
+
+- And compare the two models
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer10, lmer11)
+```
+
+- The interaction is not justified: the simpler model is equally good at fitting the data (even slightly better AIC/BIC/logLik values)
+
+> Fun fact
+
+> If we have higher order interactions, we fit a model without the highest interaction parameter, keeping the lower-level interactions, and continue until we reach the final model justified by the data
+
+## Is each of the fixed predictors justified?
+
+## Is Freq_z justified?
+
+- We fit a model without Freq_z
+
+```{r, warning = FALSE, message = FALSE}
+lmer12 = lmer( RT ~ PartSpeedCat_slow + 
+                (1|Participant) + 
+                (1|Word),
+                data = df_n, REML = FALSE)
+```
+
+- And compare it with the model that includes Freq_z
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer11, lmer12)
+```
+
+
+- Excluding Freq_z significantly disrupts the model fit
+  - The difference in fit is significant
+  - AIC/BIC/logLik values speak in favor of the more complex model (lmer11)
+
+- Yes, the effect of Freq_z is significant, we should keep it in the model
+
+## Is PartSpeedCat_slow justified?
+
+- We fit a model without PartSpeedCat_slow
+
+```{r, warning = FALSE, message = FALSE}
+lmer13 = lmer( RT ~ Freq_z + 
+                (1|Participant) + 
+                (1|Word),
+                data = df_n, REML = FALSE)
+```
+
+- And compare it with the model that includes PartSpeedCat_slow
+
+```{r, warning = FALSE, message = FALSE}
+anova(lmer11, lmer13)
+```
+
+- Excluding PartSpeedCat_slow significantly disrupts the model fit
+  - The difference in fit is significant
+  - AIC/BIC/logLik values speak in favor of the more complex model (lmer11)
+
+- Yes, the effect of PartSpeedCat_slow is significant, we should keep it in the model
+
+## We reached the conclusion that our final model justified by the data is lmer11
+
+```{r, warning = FALSE, message = FALSE}
+lmer11 = lmer( RT ~ Freq_z + PartSpeedCat_slow + 
+                (1|Participant) + 
+                (1|Word),
+                data = df_n, REML = FALSE)
+```
+
+- Check the convergence again, just in case
+
+```{r, warning = FALSE, message = FALSE}
+performance::check_convergence(lmer11)
+isSingular(lmer11)
+summary(rePCA(lmer11))
+```
+
+## Inspecting the coefficients
+
+- Only now, when we have a model with parameters justified by the data, can we look at the coefficients
+
+- Recall our final model:
+
+```{r, warning = FALSE, message = FALSE}
+lmer11 = lmer( RT ~ Freq_z + PartSpeedCat_slow + 
+                (1|Participant) + 
+                (1|Word),
+                data = df_n, REML = FALSE)
+```
+
+```{r, warning = FALSE, message = FALSE}
+summary(lmer11)
+```
+
+
+
+
+## Model diagnostics
+
+
+- The correlation between the observed RT and predicted RT (with a red dashed line indicating perfect correlation)
+
+```{r, warning = FALSE, message = FALSE}
+df_n$RT.fitted = predict(lmer11)
+
+ggplot(df_n, aes(x=RT.fitted, y=RT)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  geom_abline(intercept = 0, slope = 1, colour = "red", linetype = "dashed") +
+  theme_bw()
+```
+
+- The correlation between the fitted values and the residuals
+
+```{r, warning = FALSE, message = FALSE}
+df_n$RT.res = residuals(lmer11)
+
+ggplot(df_n, aes(x=RT.fitted, y=RT.res)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = TRUE) +
+  theme_bw()
+```
+
+- The normality of the distribution of residuals 
+
+```{r, warning = FALSE, message = FALSE}
+ggplot(df_n, aes(sample=RT.res)) +
+  stat_qq() + stat_qq_line()+
+  theme_bw()
+```
+
+
+- Refit the model on a subset of points whose residuals are within the range of +/-2.5 sigma
+
+```{r, warning = FALSE, message = FALSE}
+lmer11t = lmer( RT ~ Freq_z + PartSpeedCat_slow + 
+                (1|Participant) + 
+                (1|Word),
+              data = df_n, subset=abs(scale(resid(lmer6a)))<2.5, 
+              REML = FALSE)
+
+summary(lmer11t)
+```
+
+- Let's repeat the diagnostics:
+
+```{r, warning = FALSE, message = FALSE}
+par(mfcol=c(1,2))
+qqnorm(resid(lmer11t))
+plot(fitted(lmer11t), resid(lmer11t))
+par(mfcol=c(1,1))
+```
+
+## Make a table for the paper
+
+```{r, warning = FALSE, message = FALSE}
+sjPlot::tab_model(lmer11t, show.se = TRUE, show.stat = TRUE, dv.labels = c("RT (ms)"))
+```
+
+## Visualize the coefficients
+
+```{r, warning = FALSE, message = FALSE}
+plot(model_parameters(lmer11t))
+```
+
+## Plot the predictions from the model
+
+  - Refit the model using our old catogorical variable (easier for visualizing)
+  
+```{r, warning = FALSE, message = FALSE}
+lmer11tx = lmer( RT ~ Freq_z + PartSpeedCategory + 
+                (1|Participant) + 
+                (1|Word),
+              data = df_n, subset=abs(scale(resid(lmer6a)))<2.5, 
+              REML = FALSE)
+
+summary(lmer11tx)
+
+```
+
+- Visualize the model
+
+  - Using ggeffects package
+
+```{r, warning = FALSE, message = FALSE}
+library(ggeffects)
+
+pred = ggpredict(lmer11tx)
+plot(pred)
+```
+
+  - Using sjPlot package
+
+```{r, warning = FALSE, message = FALSE}
+library(sjPlot)
+plot_model(lmer11tx, type = "pred")
+```
+
+  - Using effects package
+
+```{r, warning = FALSE, message = FALSE}
+library(effects)
+plot(allEffects(lmer11tx))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
